@@ -104,9 +104,12 @@ done
 
 cp /data/manage $CONFIGDIR/manage
 # start the service
-$CONFIGDIR/manage start 'I did read documentation'
+# $CONFIGDIR/manage start 'I did read documentation'
 
 # run monitoring script
 if [ -f /data/monitor.sh ]; then
     /data/monitor.sh
 fi
+
+# hack to keep the container running
+tail -f /etc/hosts

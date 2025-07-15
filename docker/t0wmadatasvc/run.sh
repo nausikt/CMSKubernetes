@@ -102,7 +102,7 @@ for fname in $files; do
     fi
 done
 
-export PYTHONPATH=$PYTHONPATH:/etc/secrets:/home/_t0wmadatasvc/.local/lib/python3.12/site-packages/
+export PYTHONPATH="$PYTHONPATH:/etc/secrets:/home/_t0wmadatasvc/.local/lib/python3.12/site-packages/"
 
 cp /data/manage $CONFIGDIR/manage
 # start the service

@@ -3,5 +3,6 @@
 
 TAG=2.1.1
 pip install --upgrade pip
+pip install wmcore
 pip install --no-cache-dir git+https://github.com/dmwm/t0wmadatasvc.git@$TAG
 

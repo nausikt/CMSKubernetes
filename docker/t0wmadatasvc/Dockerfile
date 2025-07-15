@@ -31,5 +31,7 @@ ADD monitor.sh $WDIR/monitor.sh
 
 USER $USER
 WORKDIR $WDIR
-CMD ["./run.sh"]
 
+ENV PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}/etc/secrets:/home/_t0wmadatasvc/.local/lib/python3.12/site-packages"
+
+CMD ["./run.sh"]

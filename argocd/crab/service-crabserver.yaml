@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: crabserver
+  namespace: crab
+spec:
+  clusterIP: 10.254.111.214
+  clusterIPs:
+    - 10.254.111.214
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: crabserver
+      port: 8270
+    - name: crabserver-mon
+      port: 18270
+  selector:
+    app: crabserver

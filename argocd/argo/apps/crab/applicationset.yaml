@@ -8,23 +8,23 @@ spec:
     - list:
         elements:
           # ---------- test2 cluster ----------
-          # - { svc: crabserver, env: test2,  cluster: cmsweb-test2 }
-
+          # - { svc: crabserver, env: test2, cluster: cmsweb-test2, repoURL: "https://gitlab.cern.ch/kphornsi/crab-iac.git" }
+          
           # ---------- test12 cluster ----------
-          # - { svc: crabserver, env: test12, cluster: cmsweb-test12 }
+          # - { svc: crabserver, env: test12, cluster: cmsweb-test12, repoURL: "https://gitlab.cern.ch/kphornsi/crab-iac.git" }
 
           # ---------- test14 cluster ----------
-          - { svc: crabserver, env: test14, cluster: cmsweb-test14 }
-
+          - { svc: crabserver, env: test14, cluster: cmsweb-test14, repoURL: "https://gitlab.cern.ch/kphornsi/crab-iac.git" }
+          
           # ---------- preprod cluster ----------
-          # - { svc: crabserver, env: preprod, cluster: cmsweb-preprod }
-          # - { svc: filebeat,   env: preprod, cluster: cmsweb-preprod }
-          # - { svc: logstash,   env: preprod, cluster: cmsweb-preprod }
+          # - { svc: crabserver, env: preprod, cluster: cmsweb-preprod, repoURL: "https://github.com/sinonkt/CMSKubernetes.git" }
+          # - { svc: filebeat, env: preprod, cluster: cmsweb-preprod, repoURL: "https://github.com/sinonkt/CMSKubernetes.git" }
+          # - { svc: logstash, env: preprod, cluster: cmsweb-preprod, repoURL: "https://github.com/sinonkt/CMSKubernetes.git" }
           
           # ---------- prod cluster ----------
-          # - { spc: crabserver, env: prod, cluster: cmsweb-prod }
-          # - { svc: filebeat,   env: prod, cluster: cmsweb-prod }
-          # - { svc: logstash,   env: prod, cluster: cmsweb-prod }
+          # - { svc: crabserver, env: prod, cluster: cmsweb-prod, repoURL: "https://github.com/sinonkt/CMSKubernetes.git" }
+          # - { svc: filebeat, env: prod, cluster: cmsweb-prod, repoURL: "https://github.com/sinonkt/CMSKubernetes.git" }
+          # - { svc: logstash, env: prod, cluster: cmsweb-prod, repoURL: "https://github.com/sinonkt/CMSKubernetes.git" }
   template:
     metadata:
       name: '{{svc}}-{{env}}'             # e.g., crabserver-test2
@@ -34,7 +34,7 @@ spec:
     spec:
       project: project-crab
       source:
-        repoURL: https://github.com/sinonkt/CMSKubernetes.git
+        repoURL: '{{repoURL}}'
         targetRevision: migrate-to-argocd
         path: argocd/apps/crab/{{svc}}/overlays/{{env}}
       destination:

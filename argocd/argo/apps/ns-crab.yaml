@@ -6,7 +6,7 @@ metadata:
   labels: { team: crab, scope: parent }
   finalizers: [ resources-finalizer.argocd.argoproj.io ]
 spec:
-  project: project-crab
+  project: project-ops
   source:
     repoURL: https://github.com/sinonkt/CMSKubernetes.git
     targetRevision: migrate-to-argocd
@@ -15,7 +15,7 @@ spec:
       recurse: true
       include: "*.yaml"         # ensure picks up applicationset.yaml
   destination:
-    name: cmsweb-test12            # Argo CD is lives in test12 (it could be in-cluster too.)
+    name: in-cluster            # Argo CD is lives in test12 (it could be cmsweb-test12 too.)
     namespace: argocd
   syncPolicy:
     automated: { prune: true, selfHeal: true }

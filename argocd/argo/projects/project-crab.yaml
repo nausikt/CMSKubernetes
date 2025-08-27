@@ -10,6 +10,8 @@ spec:
   destinations:
     - server: '*'
       namespace: crab
+    - server: '*'     
+      namespace: argocd
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
     - { group: "",                kind: ConfigMap }

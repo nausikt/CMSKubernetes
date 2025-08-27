@@ -41,7 +41,7 @@ spec:
               value: t
             - name: CRABSERVER_THREAD_POOL
               value: "2"
-          image: registry.cern.ch/cmscrab/crabserver:pypi-test14-1755258586
+          image: registry.cern.ch/cmscrab/crabserver:v3.250820-stable
           imagePullPolicy: IfNotPresent
           livenessProbe:
             exec:

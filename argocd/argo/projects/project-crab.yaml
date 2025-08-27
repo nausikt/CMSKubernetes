@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: project-crab
+  namespace: argocd
+spec:
+  description: "CRAB apps across test2/test12/test14, for test/dev purpose only"
+  sourceRepos:
+    - https://github.com/sinonkt/CRABServer.git
+  destinations:
+    - server: '*'
+      namespace: crab
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - { group: "",                kind: ConfigMap }
+    - { group: "",                kind: Secret }
+    - { group: "",                kind: Service }
+    - { group: networking.k8s.io, kind: Ingress }
+    - { group: apps,              kind: Deployment }
+    - { group: apps,              kind: DaemonSet }
+    - { group: batch,             kind: CronJob }

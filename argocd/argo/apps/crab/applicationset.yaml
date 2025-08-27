@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: crab-svcs
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          # ---------- test2 cluster ----------
+          # - { svc: crabserver, env: test2,  cluster: cmsweb-test2 }
+
+          # ---------- test12 cluster ----------
+          # - { svc: crabserver, env: test12, cluster: cmsweb-test12 }
+
+          # ---------- test14 cluster ----------
+          - { svc: crabserver, env: test14, cluster: cmsweb-test14 }
+
+          # ---------- preprod cluster ----------
+          # - { svc: crabserver, env: preprod, cluster: cmsweb-preprod }
+          # - { svc: filebeat,   env: preprod, cluster: cmsweb-preprod }
+          # - { svc: logstash,   env: preprod, cluster: cmsweb-preprod }
+          
+          # ---------- prod cluster ----------
+          # - { spc: crabserver, env: prod, cluster: cmsweb-prod }
+          # - { svc: filebeat,   env: prod, cluster: cmsweb-prod }
+          # - { svc: logstash,   env: prod, cluster: cmsweb-prod }
+  template:
+    metadata:
+      name: '{{svc}}-{{env}}'             # e.g., crabserver-test2
+      labels:
+        team: crab
+        env: '{{env}}'
+    spec:
+      project: project-crab
+      source:
+        repoURL: https://github.com/sinonkt/CMSKubernetes.git
+        targetRevision: main
+        path: apps/crab/{{svc}}/overlays/{{env}}
+      destination:
+        name: '{{cluster}}'               # <-- Argo cluster name (registered via argocd cluster add e.g. cmsweb-test2, cmsweb-test12, ...etc)
+        namespace: crab
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [ CreateNamespace=true ]
+

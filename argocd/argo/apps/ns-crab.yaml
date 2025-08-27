@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ns-crab
+  namespace: argocd
+  labels: { team: crab, scope: parent }
+  finalizers: [ resources-finalizer.argocd.argoproj.io ]
+spec:
+  project: project-crab
+  source:
+    repoURL: https://github.com/sinonkt/CMSKubernetes.git
+    targetRevision: main
+    path: argo/apps/crab
+    directory:
+      recurse: true
+      include: "*.yaml"         # ensure picks up applicationset.yaml
+  destination:
+    name: cmsweb-test12            # Argo CD is lives in test12 (it could be in-cluster too.)
+    namespace: argocd
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    deployment.kubernetes.io/revision: "34"
+    deployment.kubernetes.io/revision: "3"
   labels:
     app: crabserver
   name: crabserver

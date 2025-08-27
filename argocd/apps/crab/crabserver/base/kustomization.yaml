@@ -4,4 +4,9 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
-  - configmap.yaml
+
+configMapGenerator:
+- name: crabserver
+  files:
+    - config/config.py
+    - config/entrypoint.sh

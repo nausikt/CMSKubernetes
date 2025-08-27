@@ -9,6 +9,10 @@ tmp
 log
 hmac
 
+# allow config dirs for all teams/services/base|overlays|envs under argocd/apps
+!argocd/apps/**/config/
+!argocd/apps/**/config/**
+
 # PyCharm IDE
 .idea
 

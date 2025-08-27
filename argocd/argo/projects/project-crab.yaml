@@ -6,7 +6,7 @@ metadata:
 spec:
   description: "CRAB apps across test2/test12/test14, for test/dev purpose only"
   sourceRepos:
-    - https://github.com/sinonkt/CRABServer.git
+    - https://github.com/sinonkt/CMSKubernetes.git
   destinations:
     - server: '*'
       namespace: crab

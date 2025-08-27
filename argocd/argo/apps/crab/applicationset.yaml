@@ -35,7 +35,7 @@ spec:
       project: project-crab
       source:
         repoURL: https://github.com/sinonkt/CMSKubernetes.git
-        targetRevision: main
+        targetRevision: master
         path: apps/crab/{{svc}}
         # path: apps/crab/{{svc}}/overlays/{{env}}         # <-- Generic path via kustomize overlay
       destination:

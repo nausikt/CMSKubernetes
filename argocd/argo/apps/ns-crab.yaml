@@ -9,7 +9,7 @@ spec:
   project: project-crab
   source:
     repoURL: https://github.com/sinonkt/CMSKubernetes.git
-    targetRevision: main
+    targetRevision: master
     path: argo/apps/crab
     directory:
       recurse: true

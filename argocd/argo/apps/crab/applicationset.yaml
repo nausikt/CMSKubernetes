@@ -36,8 +36,7 @@ spec:
       source:
         repoURL: https://github.com/sinonkt/CMSKubernetes.git
         targetRevision: migrate-to-argocd
-        path: argocd/apps/crab/{{svc}}/base
-        # path: apps/crab/{{svc}}/overlays/{{env}}         # <-- Generic path via kustomize overlay
+        path: apps/crab/{{svc}}/overlays/{{env}}
       destination:
         name: '{{cluster}}'               # <-- Argo cluster name (registered via argocd cluster add e.g. cmsweb-test2, cmsweb-test12, ...etc)
         namespace: crab

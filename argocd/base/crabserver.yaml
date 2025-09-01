@@ -1,3 +1,4 @@
+---
 kind: ConfigMap
 metadata:
   labels:
@@ -93,6 +94,7 @@ data:
     ls -lahZ /etc/grid-security
 
     exec /usr/bin/tini -- "$@"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -236,6 +238,7 @@ spec:
           secret:
             defaultMode: 420
             secretName: token-secrets
+---
 apiVersion: v1
 kind: Service
 metadata:

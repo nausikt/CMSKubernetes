@@ -7,7 +7,7 @@ spec:
   description: "CRAB apps across test2/test12/test14, for test/dev purpose only"
   sourceRepos:
     - https://github.com/sinonkt/CMSKubernetes.git
-    - https://gitlab.cern.ch/crab3/crab-iac-overlays-sidecar.git
+    - https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
   destinations:
     - server: '*'
       namespace: crab

@@ -1,0 +1,38 @@
+apiVersion: v1
+data:
+  filebeat.yml: |-
+    filebeat.inputs:
+    - type: container
+      paths:
+        - /var/log/pods/crab_crabserver*/crabserver/*.log
+      include_lines:
+        - '\] crabserver-\w+-\w+ \d'
+      tags:
+        - "crabhttpcall"
+    - type: container
+      paths:
+        - /var/log/pods/crab_crabserver*/crabserver/*.log
+      include_lines:
+        - 'MeasureTime:seconds - '
+        - 'MeasureSize:bytes - '
+      tags:
+        - "crabrest"
+    output.logstash:
+      hosts: ["logstash:5044"]
+      compression_level: 3
+      bulk_max_size: 4096
+    queue.mem:
+      events: 65536
+    logging.metrics.enabled: false
+    logging.level: info
+kind: ConfigMap
+metadata:
+  labels:
+    k8s-app: filebeat
+  name: filebeat-crab-config
+  namespace: crab
+  annotations: {}
+spec:
+  template:
+    metadata:
+      annotations: {}

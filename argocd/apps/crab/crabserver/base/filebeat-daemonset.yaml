@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    deprecated.daemonset.template.generation: "2"
+  labels:
+    app: filebeat-crab
+  name: filebeat-crab
+  namespace: crab
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: filebeat-crab
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "18270"
+        prometheus.io/scrape: "true"
+      creationTimestamp: null
+      labels:
+        app: filebeat-crab
+    spec:
+      containers:
+        - args:
+            - bash
+            - -c
+            - filebeat -c /etc/filebeat.yml --path.data /data/filebeat/${MY_NODE_NAME}/data -e
+          env:
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: MY_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+          image: docker.elastic.co/beats/filebeat:8.5.1
+          imagePullPolicy: IfNotPresent
+          name: filebeat
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 200m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/log/pods
+              name: varlogpods
+              readOnly: true
+            - mountPath: /var/log/containers
+              name: varlogcontainers
+              readOnly: true
+            - mountPath: /etc/filebeat.yml
+              name: config
+              subPath: filebeat.yml
+            - mountPath: /data
+              name: data
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - hostPath:
+            path: /var/log/pods
+            type: ""
+          name: varlogpods
+        - hostPath:
+            path: /var/log/containers
+            type: ""
+          name: varlogcontainers
+        - name: data
+        - configMap:
+            defaultMode: 416
+            name: filebeat-crab-config
+          name: config
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate

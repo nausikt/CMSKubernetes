@@ -1,12 +1,22 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: crab
+
 resources:
   - deployment.yaml
   - service.yaml
+  - filebeat-daemonset.yaml
 
 configMapGenerator:
 - name: crabserver
   files:
     - config/config.py
     - config/entrypoint.sh
+  options:
+    disableNameSuffixHash: true
+- name: filebeat-crab-config
+  files:
+    - config/filebeat.yml
+  options:
+    disableNameSuffixHash: true

@@ -7,7 +7,6 @@ resources:
   - ../../base
   - filebeat-daemonset.yaml
   - logstash-deployment.yaml
-  - logstash-configmap.yaml
 
 configMapGenerator:
 - name: crabserver
@@ -17,6 +16,12 @@ configMapGenerator:
 - name: filebeat-crab-config
   files:
     - config/filebeat.yml
+  options:
+    disableNameSuffixHash: true
+- name: logstash
+  files:
+    - config/logstash.conf
+    - config/logstash.yml
   options:
     disableNameSuffixHash: true
 

@@ -10,7 +10,13 @@ resources:
 configMapGenerator:
 - name: crabserver
   files:
-    - config/config.py
-    - config/entrypoint.sh
+    - config.py=config/config.py
+    - entrypoint.sh=config/entrypoint.sh
   options:
     disableNameSuffixHash: true
+
+labels:
+  - pairs:
+      app: crabserver
+      env: k8s-test
+    includeTemplates: true

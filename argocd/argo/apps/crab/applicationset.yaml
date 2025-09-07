@@ -41,6 +41,6 @@ spec:
         name: '{{cluster}}'               # <-- Argo cluster name (registered via argocd cluster add e.g. cmsweb-test2, cmsweb-test12, ...etc)
         namespace: crab
       syncPolicy:
-        automated: { prune: true, selfHeal: true }
+        automated: { prune: false, selfHeal: true }
         syncOptions: [ CreateNamespace=true ]
 

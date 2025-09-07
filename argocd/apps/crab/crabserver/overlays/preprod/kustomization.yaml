@@ -8,8 +8,23 @@ resources:
   - filebeat-daemonset.yaml
 
 configMapGenerator:
+- name: crabserver
+  behavior: merge
+  files:
+    - config.py=config/config.py
 - name: filebeat-crab-config
   files:
     - config/filebeat.yml
   options:
     disableNameSuffixHash: true
+
+labels:
+  - pairs:
+      env: k8s-preprod
+    includeTemplates: true
+
+patches:
+  - path: patches/cm-filebeat-label.yaml
+    target:
+      kind: ConfigMap
+      name: filebeat-crab-config

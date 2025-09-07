@@ -6,6 +6,8 @@ namespace: crab
 resources:
   - ../../base
   - filebeat-daemonset.yaml
+  - logstash-deployment.yaml
+  - logstash-configmap.yaml
 
 configMapGenerator:
 - name: crabserver

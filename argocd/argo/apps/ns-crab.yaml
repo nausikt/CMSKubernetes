@@ -18,5 +18,5 @@ spec:
     name: in-cluster            # Argo CD is lives in test12 (it could be cmsweb-test12 too.)
     namespace: argocd
   syncPolicy:
-    automated: { prune: true, selfHeal: true }
+    automated: { prune: false, selfHeal: true }
 

@@ -5,3 +5,11 @@ namespace: crab
 
 resources:
   - ../../base
+  - filebeat-daemonset.yaml
+
+configMapGenerator:
+- name: filebeat-crab-config
+  files:
+    - config/filebeat.yml
+  options:
+    disableNameSuffixHash: true

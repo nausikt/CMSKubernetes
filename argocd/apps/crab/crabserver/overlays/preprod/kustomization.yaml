@@ -39,3 +39,7 @@ patches:
     target:
       kind: Deployment
       name: crabserver
+  - path: patches/crabserver-image.yaml
+    target:
+      kind: Deployment
+      name: crabserver

@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crabserver
+spec:
+  template:
+    spec:
+      containers:
+        - name: crabserver
+          image: registry.cern.ch/cmscrab/crabserver:v3.250820-stable

@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crabserver
+spec:
+  template:
+    spec:
+      containers:
+        - name: crabserver
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  cmsweb-ping --url=http://localhost:8270/crabserver/preprod/info --authz=/etc/hmac/hmac -verbose 0 | egrep "^[2-4]"
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  cmsweb-ping --url=http://localhost:8270/crabserver/preprod/info --authz=/etc/hmac/hmac -verbose 0 | egrep "^[2-4]"
+

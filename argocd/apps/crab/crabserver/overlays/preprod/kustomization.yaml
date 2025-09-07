@@ -8,6 +8,7 @@ resources:
   - filebeat-daemonset.yaml
   - logstash-deployment.yaml
   - logstash-service.yaml
+  - ingress.yaml
 
 configMapGenerator:
 - name: crabserver

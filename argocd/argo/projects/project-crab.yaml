@@ -4,7 +4,7 @@ metadata:
   name: project-crab
   namespace: argocd
 spec:
-  description: "CRAB apps across test2/test12/test14, for test/dev purpose only"
+  description: "CRAB apps across test2/test12/test14/preprod, for test/dev/preprod CI"
   sourceRepos:
     - https://github.com/sinonkt/CMSKubernetes.git
     - https://gitlab.cern.ch/crab3/crab-k8s-overlays.git

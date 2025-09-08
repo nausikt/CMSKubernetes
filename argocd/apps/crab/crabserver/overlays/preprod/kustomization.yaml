@@ -19,13 +19,13 @@ configMapGenerator:
   files:
     - config/filebeat.yml
   options:
-    disableNameSuffixHash: true
+    disableNameSuffixHash: false
 - name: logstash
   files:
     - config/logstash.conf
     - config/logstash.yml
   options:
-    disableNameSuffixHash: true
+    disableNameSuffixHash: false
 
 labels:
   - pairs:

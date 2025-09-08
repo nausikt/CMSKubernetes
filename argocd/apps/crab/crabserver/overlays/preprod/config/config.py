@@ -38,6 +38,8 @@ data.backend = 'oracle'
 data.db = 'CRABServerAuth.dbconfig'
 data.s3 = 'CRABServerAuth.s3'
 data.workflowManager = 'HTCondorDataWorkflow'
+# compatible client versions
+data.compatibleVersions = ["v3", "development"]
 
 data.extconfigurl = 'http://gitlab.cern.ch/crab3/CRAB3ServerConfig/raw/master/cmsweb-rest-config.json'
 

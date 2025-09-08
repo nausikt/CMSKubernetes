@@ -34,6 +34,8 @@ data.db = 'CRABServerAuth.dbconfig'
 data.s3 = 'CRABServerAuth.s3'
 data.s3_bucket = 'crabcache_dev'
 data.workflowManager = 'HTCondorDataWorkflow'
+# compatible client versions
+data.compatible-version = ["v3", "development"]
 
 data.extconfigurl = 'http://gitlab.cern.ch/crab3/CRAB3ServerConfig/raw/master/cmsweb-rest-config.json'
 

@@ -1,8 +1,6 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  annotations:
-    deprecated.daemonset.template.generation: "2"
   labels:
     app: filebeat-crab
   name: filebeat-crab

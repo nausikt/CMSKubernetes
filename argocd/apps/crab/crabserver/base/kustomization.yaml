@@ -13,7 +13,7 @@ configMapGenerator:
     - config.py=config/config.py
     - entrypoint.sh=config/entrypoint.sh
   options:
-    disableNameSuffixHash: true
+    disableNameSuffixHash: false
 
 labels:
   - pairs:

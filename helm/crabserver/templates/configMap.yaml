@@ -5,6 +5,7 @@ apiVersion: v1
 metadata:
   name: crabserver
   labels:
+    env: k8s-{{.Values.environment}}
     app: crabserver
   namespace: crab
 data:

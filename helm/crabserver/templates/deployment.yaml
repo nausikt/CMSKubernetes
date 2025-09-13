@@ -5,6 +5,7 @@ kind: Deployment
 metadata:
   name: crabserver
   labels:
+    env: k8s-{{.Values.environment}}
     app: crabserver
   namespace: crab
 spec:

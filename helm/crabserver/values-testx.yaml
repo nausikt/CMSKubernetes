@@ -2,4 +2,4 @@
 environment: "test"
 
 image:
-  tag: "v3.240809-stable"
+  tag: "v3.250812-stable"

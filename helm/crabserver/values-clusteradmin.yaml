@@ -10,5 +10,3 @@ crabserver:
 
 ciServiceAccount:
   enabled: true
-logPipeline:
-  enabled: true

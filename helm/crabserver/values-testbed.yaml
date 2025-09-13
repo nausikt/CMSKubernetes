@@ -2,3 +2,6 @@ environment: "preprod"
 
 image:
   tag: "v3.250812-stable"
+
+ciServiceAccount:
+  enabled: false

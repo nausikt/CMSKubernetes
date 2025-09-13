@@ -1,5 +1,4 @@
-# Default values for crabserver.
-# This is a YAML-formatted file.
+# Default values for crabserver.# This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 enabled: true
@@ -77,12 +76,6 @@ serviceMon:
   name: crabserver-mon
   port: 18720
   protocol: TCP
-
-ingress:
-  enabled: false
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
 
 resources:
   limits:

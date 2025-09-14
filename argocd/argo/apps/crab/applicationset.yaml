@@ -31,6 +31,7 @@ spec:
             valuesFiles:
               - values.yaml
               - values-testx.yaml
+              - $values/values-{{cluster}}.yaml
         - repoURL: https://github.com/sinonkt/CMSKubernetes.git
           targetRevision: migrate-to-argocd
           path: helm/crabserver

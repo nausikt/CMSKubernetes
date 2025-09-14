@@ -4,6 +4,7 @@ metadata:
   name: crab-svcs
   namespace: argocd
 spec:
+  goTemplate: true
   generators:
     - list:
         elements:

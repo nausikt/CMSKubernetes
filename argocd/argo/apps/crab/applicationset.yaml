@@ -32,7 +32,7 @@ spec:
           helm:
             valueFiles:
               - $base/values.yaml
-              - $base/values-{{env}}.yaml
+              - $base/values-{{env}}x.yaml
               - $overlays/values-{{cluster}}.yaml   # note: $overlays (matches ref below)
         # Source 2: overlays values for hot desired manifests.
         - repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git

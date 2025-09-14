@@ -37,7 +37,6 @@ spec:
             valueFiles:
               - values.yaml
               - values-testx.yaml
-              - $overlays/values-{{cluster}}.yaml
       destination:
         name: cmsweb-{{cluster}}               # <-- Argo cluster name (registered via argocd cluster add e.g. cmsweb-test2, cmsweb-test12, ...etc)
         namespace: crab

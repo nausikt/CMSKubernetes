@@ -23,23 +23,14 @@ spec:
         env: '{{env}}'
     spec:
       project: project-crab
-      sources:
-        # Source 1: the chart, and base values.
-        - repoURL: https://github.com/sinonkt/CMSKubernetes.git
-          targetRevision: migrate-to-argocd
-          path: helm/crabserver
-          ref: base
-        # Source 2: overlays values for hot desired manifests.
-        - repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
-          targetRevision: master
-          path: helm/crabserver
-          ref: overlays
-      source:
+       source:
+        repoURL: https://github.com/sinonkt/CMSKubernetes.git
+        targetRevision: migrate-to-argocd
+        path: helm/crabserver
         helm:
           valueFiles:
-            - $base/values.yaml 
-            - $overlays/values-{{env}}.yaml
-            - $overlays/values-{{cluster}}.yaml
+            - helm/crabserver/values.yaml
+            - helm/crabserver/values-testx.yaml
       destination:
         name: cmsweb-{{cluster}}               # <-- Argo cluster name (registered via argocd cluster add e.g. cmsweb-test2, cmsweb-test12, ...etc)
         namespace: crab

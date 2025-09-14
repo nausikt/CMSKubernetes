@@ -10,13 +10,7 @@ metadata:
   namespace: crab
 spec:
   {{- if not .Values.autoscaling.enabled }}
-  {{- if (eq (toString $environment) "prod") }}
-  replicas: {{ .Values.replicaCount.prod }}
-  {{- else if (eq (toString $environment) "preprod")}}
-  replicas: {{ .Values.replicaCount.preprod }}
-  {{- else }}
-  replicas: {{ .Values.replicaCount.test }}
-  {{- end }}
+  replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:

@@ -3,10 +3,7 @@
 
 enabled: true
 
-replicaCount:
-  prod: 15
-  preprod: 1
-  test: 1
+replicaCount: 1
 
 image:
   path: registry.cern.ch/cmscrab/crabserver
@@ -26,6 +23,7 @@ image:
 
 canary:
   enabled: false
+  replicaCount: 1
   image:
     path: registry.cern.ch/cmscrab/crabserver
     pullPolicy: IfNotPresent

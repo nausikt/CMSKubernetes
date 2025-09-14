@@ -12,5 +12,9 @@ data:
   entrypoint.sh: |
 {{ (.Files.Get "scripts/entrypoint.sh" | indent 4) }}
   config.py: |
+{{- if .Values.crabserver.configPy }}
+{{ .Values.crabserver.configPy | nindent 4 }}
+{{- else }}
 {{ (.Files.Get (printf "config/%s/config.py" $environment) | indent 4) }}
+{{- end }}
 {{- end }}

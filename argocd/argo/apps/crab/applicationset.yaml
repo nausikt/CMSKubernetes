@@ -23,7 +23,7 @@ spec:
         env: '{{env}}'
     spec:
       project: project-crab
-      source:
+      sources:
         - repoURL: https://github.com/sinonkt/CMSKubernetes.git
           targetRevision: migrate-to-argocd
           path: helm/crabserver

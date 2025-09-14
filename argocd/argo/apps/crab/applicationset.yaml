@@ -23,7 +23,7 @@ spec:
         env: '{{env}}'
     spec:
       project: project-crab
-      sources:
+      source:
         - repoURL: https://github.com/sinonkt/CMSKubernetes.git
           targetRevision: migrate-to-argocd
           path: helm/crabserver
@@ -32,10 +32,6 @@ spec:
               - values.yaml
               - values-testx.yaml
               - $values/values-{{cluster}}.yaml
-        - repoURL: https://github.com/sinonkt/CMSKubernetes.git
-          targetRevision: migrate-to-argocd
-          path: helm/crabserver
-          ref: values
       destination:
         name: cmsweb-{{cluster}}               # <-- Argo cluster name (registered via argocd cluster add e.g. cmsweb-test2, cmsweb-test12, ...etc)
         namespace: crab

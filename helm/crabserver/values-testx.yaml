@@ -2,4 +2,4 @@
 environment: "test"
 
 image:
-  tag: "pypi-test12-150925"
+  tag: "pypi-test12-091525"

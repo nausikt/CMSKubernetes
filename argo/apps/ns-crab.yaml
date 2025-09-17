@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ns-crab
+  namespace: argocd
+  labels: { team: crab, scope: parent }
+  finalizers: [ resources-finalizer.argocd.argoproj.io ]
+spec:
+  project: project-ops
+  source:
+    repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
+    targetRevision: master
+    path: argo/apps/crab
+    directory:
+      recurse: true
+      include: "*.yaml"         # ensure picks up applicationset.yaml
+  destination:
+    name: in-cluster            # Argo CD is lives in test12 (it could be cmsweb-test12 too.)
+    namespace: argocd
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }

@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: project-ops
+  namespace: argocd
+spec:
+  description: "Argo control-plane objects in argocd namespace only"
+  sourceRepos:
+    - https://github.com/dmwm/CMSKubernetes.git
+    - https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
+  destinations:
+    - server: '*'
+      namespace: argocd
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Application
+    - group: argoproj.io
+      kind: ApplicationSet

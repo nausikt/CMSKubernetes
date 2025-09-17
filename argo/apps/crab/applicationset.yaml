@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: crab-svcs
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          # ---------- test2 cluster ----------
+          - { svc: crabserver, env: test, cluster: test2 }
+          # ---------- test12 cluster ----------
+          - { svc: crabserver, env: test, cluster: test12 }
+          # ---------- test14 cluster ----------
+          - { svc: crabserver, env: test, cluster: test14 }
+          # ---------- preprod cluster ----------
+          # - { svc: crabserver, env: preprod, cluster: preprod }
+  template:
+    metadata:
+      name: '{{svc}}-{{cluster}}'             # e.g., crabserver-test2
+      labels:
+        team: crab
+        env: '{{env}}'
+    spec:
+      project: project-crab
+      sources:
+        - repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
+          targetRevision: master
+          path: vendor/helm/crabserver
+          helm:
+            valueFiles:
+              - values.yaml
+              - values-testx.yaml
+              - $hot/helm/crabserver/values-{{cluster}}.yaml
+        - repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
+          targetRevision: master
+          ref: hot
+      destination:
+        name: cmsweb-{{cluster}}
+        namespace: crab
+      syncPolicy:
+        automated: { prune: false, selfHeal: true }
+        syncOptions: [ CreateNamespace=true ]
+

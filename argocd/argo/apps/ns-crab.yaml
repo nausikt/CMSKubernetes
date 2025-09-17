@@ -8,9 +8,9 @@ metadata:
 spec:
   project: project-ops
   source:
-    repoURL: https://github.com/sinonkt/CMSKubernetes.git
-    targetRevision: migrate-to-argocd
-    path: argocd/argo/apps/crab
+    repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
+    targetRevision: master
+    path: argo/apps/crab
     directory:
       recurse: true
       include: "*.yaml"         # ensure picks up applicationset.yaml
@@ -19,4 +19,3 @@ spec:
     namespace: argocd
   syncPolicy:
     automated: { prune: false, selfHeal: true }
-

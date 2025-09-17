@@ -6,7 +6,8 @@ metadata:
 spec:
   description: "Argo control-plane objects in argocd namespace only"
   sourceRepos:
-    - https://github.com/sinonkt/CMSKubernetes.git
+    - https://github.com/dmwm/CMSKubernetes.git
+    - https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
   destinations:
     - server: '*'
       namespace: argocd

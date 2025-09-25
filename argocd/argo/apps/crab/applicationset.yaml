@@ -26,7 +26,7 @@ spec:
       sources:
         - repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
           targetRevision: master
-          path: vendor/helm/crabserver
+          path: upstream/helm/crabserver
           helm:
             valueFiles:
               - values.yaml

@@ -9,7 +9,8 @@ spec:
   project: project-ops
   source:
     # repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
-    repoURL: https://github.com/sinonkt/CMSKubernetes.git
+    # repoURL: https://github.com/sinonkt/CMSKubernetes.git
+    repoURL: https://github.com/nausikt/CMSKubernetes
     targetRevision: migrate-to-argocd
     path: argo/apps/crab
     directory:

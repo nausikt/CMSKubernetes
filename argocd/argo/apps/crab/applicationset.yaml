@@ -30,7 +30,7 @@ spec:
           helm:
             valueFiles:
               - values.yaml
-              - values-testx.yaml
+              - values-test.yaml
               - $hot/helm/crabserver/values-{{cluster}}.yaml
         - repoURL: https://gitlab.cern.ch/crab3/crab-k8s-overlays.git
           targetRevision: master

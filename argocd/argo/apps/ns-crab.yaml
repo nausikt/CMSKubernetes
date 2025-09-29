@@ -12,7 +12,7 @@ spec:
     # repoURL: https://github.com/sinonkt/CMSKubernetes.git
     repoURL: https://github.com/nausikt/CMSKubernetes.git
     targetRevision: migrate-to-argocd
-    path: argo/apps/crab
+    path: argocd/argo/apps/crab
     directory:
       recurse: true
       include: "*.yaml"         # ensure picks up applicationset.yaml

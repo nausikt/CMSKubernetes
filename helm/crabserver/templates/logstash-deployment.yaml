@@ -3,13 +3,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: logstash-crab
+  name: logstash
+  namespace: crab
   labels:
-    app: logstash-crab
+    app: logstash
 spec:
   selector:
     matchLabels:
-      app: logstash-crab
+      app: logstash
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -17,7 +18,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        app: logstash-crab
+        app: logstash
     spec:
       containers:
       - image: docker.elastic.co/logstash/logstash:8.1.3
@@ -68,13 +69,13 @@ spec:
       volumes:
       - name: pipeline
         configMap:
-          name: logstash-crab
+          name: logstash
           items:
           - key: logstash.conf
             path: logstash.conf
       - name: config
         configMap:
-          name: logstash-crab
+          name: logstash
           items:
           - key: logstash.yml
             path: logstash.yml

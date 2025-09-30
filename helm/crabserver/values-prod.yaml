@@ -8,3 +8,6 @@ canary:
   replicaCount: 1
   image:
     tag: "v3.250401-stable"
+
+logPipeline:
+  enabled: true

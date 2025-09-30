@@ -5,7 +5,8 @@ kind: ConfigMap
 metadata:
   labels:
     k8s-app: logstash
-  name: logstash-crab
+  name: logstash
+  namespace: crab
 data:
   # logstash config
   logstash.yml: |

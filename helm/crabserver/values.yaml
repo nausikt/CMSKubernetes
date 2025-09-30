@@ -123,3 +123,35 @@ affinity: {}
 
 ciServiceAccount:
   enabled: false
+
+logPipeline:
+  enabled: false
+  filebeat:
+    name: filebeat
+    path: docker.elastic.co/beats/filebeat:8.5.1
+    policy: IfNotPresent
+    args:
+    - bash
+    - -c
+    - filebeat -c /etc/filebeat.yml --path.data /data/filebeat/${MY_NODE_NAME}/data -e
+    env:
+    - name: MY_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: MY_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "200m"
+      limits:
+        cpu: "1"
+        memory: "1Gi"

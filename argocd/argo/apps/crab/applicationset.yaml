@@ -32,7 +32,7 @@ spec:
         namespace: crab
       syncPolicy:
         automated: { prune: false, selfHeal: true }
-        syncOptions: [ CreateNamespace=true ]
+        syncOptions: []
         preserveResourcesOnDeletion: true
       ignoreDifferences:
         - group: "networking.k8s.io"

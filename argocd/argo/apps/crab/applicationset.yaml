@@ -33,6 +33,7 @@ spec:
       syncPolicy:
         automated: { prune: false, selfHeal: true }
         syncOptions: [ CreateNamespace=true ]
+        preserveResourcesOnDeletion: true
       ignoreDifferences:
         - group: "networking.k8s.io"
           kind: Ingress

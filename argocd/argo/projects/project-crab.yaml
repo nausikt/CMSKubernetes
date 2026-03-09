@@ -19,3 +19,14 @@ spec:
     - { group: apps,              kind: Deployment }
     - { group: apps,              kind: DaemonSet }
     - { group: batch,             kind: CronJob }
+  syncWindows:
+    - kind: allow             # can be deny, or complex multi-allow/deny windows.
+      applications:
+        - '*'
+      clusters:
+        - '*'
+      duration: 24h
+      namespaces:
+        - 'crab'
+      schedule: '* * * * *'
+      manualSync: true        # allows manual sync DURING the deny window, allow window is alreaddy true

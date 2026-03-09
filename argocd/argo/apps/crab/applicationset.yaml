@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: crab-svcs
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          # - { svc: crabserver, env: test, cluster: test2 }
+          - { svc: crabserver, env: test, cluster: test12 }
+          - { svc: crabserver, env: test, cluster: test14 }
+          - { svc: crabserver, env: preprod, cluster: preprod }
+  template:
+    metadata:
+      name: '{{svc}}-{{cluster}}'             # e.g., crabserver-test2
+      labels:
+        team: crab
+        env: '{{env}}'
+    spec:
+      project: project-crab
+      sources:
+        - repoURL: https://github.com/nausikt/CMSKubernetes.git
+          targetRevision: crab
+          path: helm/crabserver
+          helm:
+            valueFiles:
+              - values.yaml
+              - values-{{cluster}}.yaml
+      destination:
+        name: cmsweb-{{cluster}}
+        namespace: crab
+      syncPolicy:
+        automated: { prune: false, selfHeal: true }
+        syncOptions: [ CreateNamespace=true ]
+

@@ -2,4 +2,4 @@
 environment: "test"
 
 image:
-  tag: "v3.250929.1-stable"
+  tag: "pypi-test2-localgroupinfo-1"

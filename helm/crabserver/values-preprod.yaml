@@ -1,7 +1,7 @@
 environment: "preprod"
 
 image:
-  tag: "v3-251024"
+  tag: "v3-260226"
 
 ciServiceAccount:
   enabled: false

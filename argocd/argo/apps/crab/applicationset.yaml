@@ -4,6 +4,8 @@ metadata:
   name: crab-svcs
   namespace: argocd
 spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
   generators:
     - list:
         elements:
@@ -33,7 +35,6 @@ spec:
       syncPolicy:
         automated: { prune: false, selfHeal: true }
         syncOptions: []
-        preserveResourcesOnDeletion: true
       ignoreDifferences:
         - group: "networking.k8s.io"
           kind: Ingress

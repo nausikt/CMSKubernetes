@@ -30,5 +30,5 @@ readinessProbe:
   timeoutSeconds: 60
 
 logPipeline:
-  enabled: true
+  enabled: false
   # logstashNamespace: logging

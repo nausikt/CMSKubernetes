@@ -39,3 +39,9 @@ spec:
           kind: Ingress
           jsonPointers:
             - /
+        - group: ""
+          kind: ConfigMap
+        - group: "apps"
+          kind: DaemonSet
+        - group: "batch"
+          kind: CronJob

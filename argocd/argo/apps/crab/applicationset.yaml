@@ -7,7 +7,7 @@ spec:
   generators:
     - list:
         elements:
-          # - { svc: crabserver, env: test, cluster: test2 }
+          - { svc: crabserver, env: test, cluster: test2 }
           - { svc: crabserver, env: test, cluster: test12 }
           - { svc: crabserver, env: test, cluster: test14 }
           - { svc: crabserver, env: preprod, cluster: preprod }

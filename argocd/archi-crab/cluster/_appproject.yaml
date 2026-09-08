@@ -25,6 +25,7 @@ spec:
     - {server: https://kubernetes.default.svc, namespace: archi-crab-obs}
     - {server: https://kubernetes.default.svc, namespace: archi-crab-gw}
     - {server: https://kubernetes.default.svc, namespace: toolhive-system}
+    - {server: https://kubernetes.default.svc, namespace: argocd}
   # Cluster-scoped kinds we may create. Anything absent here is REFUSED --
   # notably ClusterRoleBinding, which is how an Application would escalate.
   clusterResourceWhitelist:

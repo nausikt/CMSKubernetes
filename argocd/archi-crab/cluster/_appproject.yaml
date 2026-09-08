@@ -36,7 +36,4 @@ spec:
     - {group: admissionregistration.k8s.io, kind: ValidatingWebhookConfiguration}
     - {group: admissionregistration.k8s.io, kind: MutatingWebhookConfiguration}
     - {group: gateway.networking.k8s.io, kind: GatewayClass}
-  namespaceResourceBlacklist:
-    # Nothing in this stack needs to mint tokens or bind cluster roles inside
-    # a namespace; blocking them removes an escalation path from a bad merge.
-    - {group: "", kind: ServiceAccount}
+  namespaceResourceBlacklist: []

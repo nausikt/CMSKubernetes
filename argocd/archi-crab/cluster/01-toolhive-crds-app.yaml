@@ -19,7 +19,7 @@ spec:
   source:
     chart: toolhive-operator-crds
     repoURL: ghcr.io/stacklok/toolhive       # Helm-OCI: no oci:// prefix here
-    targetRevision: "TODO_THV_CRDS_VER"
+    targetRevision: "0.47.0"
   destination: {server: https://kubernetes.default.svc, namespace: toolhive-system}
   syncPolicy:
     automated: {prune: false, selfHeal: true}

@@ -24,7 +24,7 @@ spec:
   source:
     chart: toolhive-operator
     repoURL: ghcr.io/stacklok/toolhive
-    targetRevision: "TODO_THV_OPERATOR_VER"
+    targetRevision: "0.47.0"
     helm:
       valuesObject:
         operator:

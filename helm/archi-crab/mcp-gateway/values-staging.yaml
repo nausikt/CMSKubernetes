@@ -1,0 +1,45 @@
+env: staging
+nameSuffix: "-staging"
+namespace: archi-crab-staging
+gateway:
+  baseName: archi-crab
+  namespace: archi-crab-gw
+  timeout: 3600s
+telemetry:
+  enabled: true
+  endpoint: otel-collector-staging.archi-crab-staging.svc.cluster.local:4318
+  sampleRate: 1.0
+servers:
+  - name: TODO_NAME_1
+    host: crab-mcp-gateway-staging.cern.ch
+    image: TODO_REGISTRY/TODO_IMAGE_1@sha256:TODO
+    transport: streamable-http
+    port: 8080
+    writablePaths: [/tmp]
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+  - name: TODO_NAME_2
+    host: TODO_HOST_2_STAGING
+    image: TODO_REGISTRY/TODO_IMAGE_2@sha256:TODO
+    transport: streamable-http
+    port: 8080
+    writablePaths: [/tmp]
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+
+
+# ---------------------------------------------------------------------------
+# NetworkPolicy. Default-deny plus explicit allows, enforced by Cilium.
+#
+# egressCIDRs is the allowlist a compromised or prompt-injected MCP server may
+# reach. It holds a live CERN user token, so where that token can be SENT is
+# the control that matters -- not whether the container is "trusted".
+# Narrow to the CRAB endpoints and CERN SSO; do not leave it open.
+# ---------------------------------------------------------------------------
+networkPolicy:
+  enabled: true
+  egressCIDRs:
+    - "TODO_CRAB_REST_CIDR/32"
+    - "TODO_CERN_SSO_CIDR/32"

@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-otel-collector
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "23"}
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/CMSKubernetes.git
+    targetRevision: archi-crab-testbed
+    path: helm/archi-crab/otel-collector
+    helm: {valueFiles: [values.yaml]}
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

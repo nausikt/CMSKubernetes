@@ -1,0 +1,20 @@
+{{- range $srv := .Values.servers }}
+---
+# Validates the JWTs TOOLHIVE issues to MCP clients.
+#
+# NOT CERN's issuer. In the embedded-AS model the proxy mints its own tokens;
+# CERN is upstream, configured in MCPExternalAuthConfig. Pointing this at
+# auth.cern.ch is the classic mis-wiring: 401 everywhere, nothing in the logs (F4).
+apiVersion: {{ $.Values.apiVersions.mcpOIDCConfig }}
+kind: MCPOIDCConfig
+metadata:
+  name: thv-issued-{{ include "mcp.serverName" (dict "srv" $srv "ctx" $) }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  type: inline
+  inline:
+    issuer: {{ include "mcp.publicUrl" $srv | quote }}
+{{- end }}

@@ -1,0 +1,15 @@
+archi-crab shared observability backends.
+
+This chart deliberately ships as a thin wrapper. Grafana, Prometheus and
+Langfuse are upstream charts with large value surfaces; they are declared as
+Argo CD Applications in argocd/archi-crab/shared/ rather than vendored here,
+so their versions are pinned where every other upstream chart is pinned.
+
+This chart owns only what is genuinely ours:
+  - the shared archi-crab-obs namespace
+  - Grafana datasource wiring (below)
+  - the dashboards, once Phase 8 tells us which questions to answer
+
+Verify after sync:
+  kubectl -n {{ .Values.namespace }} get pods
+  kubectl -n {{ .Values.namespace }} get pvc      # all Bound, none Pending

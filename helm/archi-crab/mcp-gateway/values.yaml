@@ -1,0 +1,94 @@
+# =============================================================================
+# crab-mcp-gateway  --  ONE RELEASE PER ENVIRONMENT
+#
+# NAMING: prod unsuffixed, non-prod "-<env>".  nameSuffix is the only knob.
+#
+# AUTH MODEL: ToolHive runs its own OAuth authorization server in-process. MCP
+# clients register with IT (via DCR) and get ToolHive-issued JWTs. ToolHive runs
+# the real login against CERN SSO as ONE pre-registered client and injects the
+# user's CERN token into the backend container per request.
+# =============================================================================
+
+env: prod
+nameSuffix: ""
+namespace: archi-crab
+obsNamespace: archi-crab-obs
+
+# VERIFY against your operator build before syncing (F17):
+#   kubectl api-resources --api-group=toolhive.stacklok.dev -o wide
+apiVersions:
+  mcpServer: toolhive.stacklok.dev/v1beta1
+  mcpOIDCConfig: toolhive.stacklok.dev/v1beta1
+  mcpExternalAuthConfig: toolhive.stacklok.dev/v1alpha1
+  mcpTelemetryConfig: toolhive.stacklok.dev/v1alpha1
+
+cern:
+  issuer: "https://auth.cern.ch/auth/realms/cern"
+  clientId: "TODO_CERN_CLIENT_ID"
+  scopes: [openid, profile, email]
+  # Secrets pre-exist per namespace. Use DIFFERENT signing keys per env, or a
+  # staging-issued JWT is valid in prod and the isolation is gone.
+  clientSecret: {secretName: cern-idp-secret, key: client-secret}
+  jwtSigningKey: {secretName: thv-jwt-signing, key: private-key}
+
+gateway:
+  # The ONE shared Gateway, in the shared edge namespace. NOT suffixed --
+  # prod and staging attach to the same Gateway on different listeners.
+  baseName: archi-crab
+  namespace: archi-crab-gw
+  # MCP holds long-lived streaming connections. Default route timeouts drop SSE
+  # mid-session, and tools/list still passes -- so it hides from smoke tests.
+  timeout: 3600s
+
+redis:
+  enabled: true
+  # Pin by digest before prod. A moving tag is an unreviewed code change that
+  # arrives on the next pod restart, in a component holding user tokens.
+  image: redis:7-alpine
+  # Secret must pre-exist. HOLDS THE KEY TO USER TOKENS -- see README.
+  authSecret: redis-thv-auth
+
+telemetry:
+  enabled: true
+  endpoint: otel-collector.archi-crab.svc.cluster.local:4318
+  sampleRate: 1.0            # default is 0.05, useless on a testbed (F21)
+
+# ---------------------------------------------------------------------------
+# The MCP servers. `name` is the BASE name -- nameSuffix is appended, and the
+# proxy Service, OIDC config and HTTPRoute all follow. Adding a server is one
+# entry; there is no way to add one and forget its route.
+# ---------------------------------------------------------------------------
+servers:
+  - name: TODO_NAME_1
+    host: crab-mcp-gateway.cern.ch
+    image: TODO_REGISTRY/TODO_IMAGE_1@sha256:TODO
+    transport: streamable-http        # stdio is single-client only
+    port: 8080
+    writablePaths: [/tmp]
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+  - name: TODO_NAME_2
+    host: TODO_HOST_2
+    image: TODO_REGISTRY/TODO_IMAGE_2@sha256:TODO
+    transport: streamable-http
+    port: 8080
+    writablePaths: [/tmp]
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+
+
+# ---------------------------------------------------------------------------
+# NetworkPolicy. Default-deny plus explicit allows, enforced by Cilium.
+#
+# egressCIDRs is the allowlist a compromised or prompt-injected MCP server may
+# reach. It holds a live CERN user token, so where that token can be SENT is
+# the control that matters -- not whether the container is "trusted".
+# Narrow to the CRAB endpoints and CERN SSO; do not leave it open.
+# ---------------------------------------------------------------------------
+networkPolicy:
+  enabled: true
+  egressCIDRs:
+    - "TODO_CRAB_REST_CIDR/32"
+    - "TODO_CERN_SSO_CIDR/32"

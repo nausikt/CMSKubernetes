@@ -1,0 +1,22 @@
+# SKELETON -- model routing is yours to fill in.
+# ONE PER ENVIRONMENT (D-D): config.yaml is precisely what non-prod is for.
+env: prod
+nameSuffix: ""
+namespace: archi-crab
+
+image: ghcr.io/berriai/litellm:main-stable
+replicas: 1
+secretName: litellm-keys           # provider keys + LITELLM_MASTER_KEY
+
+telemetry:
+  otel: true
+  # Points at THIS environment's collector; the name tracks nameSuffix.
+  collectorBase: otel-collector
+  # NOTE: LiteLLM's native Prometheus callback may be Enterprise-gated; sources
+  # conflict (F22). The OTel path is unaffected, which is why it is primary.
+
+# Intentionally empty. Populate per environment.
+# Do NOT add a quality-escalation chain (cheap -> expensive on dissatisfaction):
+# fallbacks fire on errors, never on dissatisfaction, so a quality chain is a
+# cost spiral with no error to stop it (D-K).
+models: []

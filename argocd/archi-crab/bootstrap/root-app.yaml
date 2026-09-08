@@ -1,0 +1,21 @@
+# App-of-apps for the ARCHI-CRAB stack, both environments.
+# THE ONLY MANIFEST APPLIED BY HAND:
+#   kubectl apply -f argocd/archi-crab/bootstrap/root-app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/CMSKubernetes.git
+    targetRevision: archi-crab-testbed
+    path: argocd/archi-crab
+    directory:
+      recurse: true
+      exclude: 'bootstrap/*'      # not self-referential
+  destination: {server: https://kubernetes.default.svc, namespace: argocd}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}

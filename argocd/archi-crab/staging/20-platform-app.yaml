@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-staging-platform
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/CMSKubernetes.git
+    targetRevision: archi-crab-testbed
+    path: helm/archi-crab/platform
+    helm: {valueFiles: [values-staging.yaml]}
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+  syncPolicy:
+    # prune:false -- owns the Namespace and the Gateway (F8).
+    automated: {prune: false, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

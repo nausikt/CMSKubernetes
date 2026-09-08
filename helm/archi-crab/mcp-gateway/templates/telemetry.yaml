@@ -1,0 +1,25 @@
+{{- if .Values.telemetry.enabled }}
+# Shared by every MCPServer in this environment. Points at the PER-ENV
+# collector, which stamps deployment.environment before fanning out.
+apiVersion: {{ .Values.apiVersions.mcpTelemetryConfig }}
+kind: MCPTelemetryConfig
+metadata:
+  name: {{ include "archi.name" (dict "base" "otel" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  openTelemetry:
+    # host:port with NO scheme and NO path. A https:// prefix silently breaks
+    # this. HTTPS is assumed unless insecure -- the collector is in-cluster,
+    # which also sidesteps the missing custom-CA support (F20).
+    endpoint: {{ .Values.telemetry.endpoint | quote }}
+    insecure: true
+    tracing: {enabled: true, sampleRate: {{ .Values.telemetry.sampleRate }}}
+    metrics: {enabled: true}
+    resourceAttributes:
+      deployment.environment: {{ .Values.env | quote }}
+      service.namespace: archi-crab
+  prometheus: {enabled: true}
+{{- end }}

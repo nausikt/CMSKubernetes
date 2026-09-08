@@ -1,0 +1,20 @@
+# Shared observability backends. ONE copy for both environments (D-D):
+# they hold heavy state, and prod-vs-preprod comparison needs one store.
+# The price is paid by deployment.environment on every signal (F13).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-obs-backends
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "-5"}
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/CMSKubernetes.git
+    targetRevision: archi-crab-testbed
+    path: helm/archi-crab/obs-backends
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-obs}
+  syncPolicy:
+    # prune:false -- owns a shared namespace holding both envs' telemetry.
+    automated: {prune: false, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

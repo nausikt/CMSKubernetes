@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-6"
+    # Deleting this Application must NOT delete the namespace and everything in
+    # it. Namespaces are removed deliberately, never as sync collateral (F8).
+    argocd.argoproj.io/sync-options: Prune=false
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted

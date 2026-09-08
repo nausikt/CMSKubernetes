@@ -1,0 +1,29 @@
+# SKELETON -- wiring only. You fill in the details.
+#
+# Reaches the MCP servers by their PUBLIC hostnames and authenticates like any
+# other MCP client. No in-cluster shortcut: a shortcut to mcp-<name>-proxy:8080
+# bypasses ToolHive token validation, so non-prod stops testing what prod runs (F25).
+env: prod
+nameSuffix: ""
+namespace: archi-crab
+
+enabled: true
+image: ghcr.io/open-webui/open-webui:main
+host: archi-crab.cern.ch
+
+gateway:
+  # The ONE shared Gateway, in the shared edge namespace.
+  baseName: archi-crab
+  namespace: archi-crab-gw
+  timeout: 3600s
+
+litellm:
+  baseName: litellm            # resolved with nameSuffix in-namespace
+  secretName: litellm-keys
+
+# Same CERN Application Portal registration as the MCP servers -- add the
+# OpenWebUI redirect URI to the EXISTING client, do not register a second one.
+oidc:
+  issuer: https://auth.cern.ch/auth/realms/cern
+  clientId: TODO_CERN_CLIENT_ID
+  secretName: cern-idp-secret

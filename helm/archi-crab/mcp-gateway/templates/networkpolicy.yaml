@@ -1,0 +1,91 @@
+{{- if .Values.networkPolicy.enabled }}
+# ############################################################################
+# Default deny, then explicit allows. Cilium enforces these.
+#
+# Without them, ANY pod in the cluster -- including another team's -- can reach
+# the Redis holding CERN user tokens, and any compromised MCP container can
+# reach anything on the network.
+# ############################################################################
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "archi.name" (dict "base" "default-deny" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# DNS is required by everything; without this allow, nothing resolves and the
+# failure looks like an application bug.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "archi.name" (dict "base" "allow-dns" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+{{- if .Values.redis.enabled }}
+# Redis: reachable ONLY from ToolHive proxy pods in this namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "archi.name" (dict "base" "redis-ingress" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+spec:
+  podSelector:
+    matchLabels: {app: {{ include "archi.name" (dict "base" "redis-thv-auth" "ctx" $) }}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: mcp-gateway
+      ports: [{protocol: TCP, port: 6379}]
+---
+{{- end }}
+# Gateway -> proxy pods. The Gateway runs in this namespace, but Cilium's
+# Envoy may be host-networked; adjust if routes 503 after enabling policies.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "archi.name" (dict "base" "allow-gateway-ingress" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/component: mcp-gateway}
+  policyTypes: [Ingress]
+  ingress:
+    - {}     # TODO tighten once the Envoy source identity is confirmed (Phase 9.2)
+---
+# Egress from MCP workloads. Deliberately an allowlist: a compromised or
+# prompt-injected MCP server holds a live user token, so where it can SEND that
+# token is the control that matters.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "archi.name" (dict "base" "mcp-egress" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/component: mcp-gateway}
+  policyTypes: [Egress]
+  egress:
+    # in-namespace: Redis, collector
+    - to: [{podSelector: {}}]
+{{- range .Values.networkPolicy.egressCIDRs }}
+    - to: [{ipBlock: {cidr: {{ . | quote }}}}]
+      ports: [{protocol: TCP, port: 443}]
+{{- end }}
+{{- end }}

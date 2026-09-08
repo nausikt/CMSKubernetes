@@ -1,0 +1,66 @@
+{{- $n := include "archi.name" (dict "base" "otel-collector" "ctx" $) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: {{ $n }}}}
+  template:
+    metadata:
+      labels:
+        app: {{ $n }}
+{{ include "archi.labels" . | indent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8889"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+{{ include "archi.podSecurityContext" . | indent 8 }}
+      containers:
+        - name: collector
+          securityContext:
+{{ include "archi.containerSecurityContext" . | indent 12 }}
+          image: {{ .Values.image }}
+          args: ["--config=/conf/config.yaml"]
+{{- if .Values.langfuse.enabled }}
+          env:
+            - name: LANGFUSE_AUTH
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.langfuse.authSecret }}, key: authorization}
+{{- end }}
+          ports:
+            - {containerPort: 4317, name: otlp-grpc}
+            - {containerPort: 4318, name: otlp-http}
+            - {containerPort: 8889, name: metrics}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 1Gi}
+          volumeMounts:
+            - {name: conf, mountPath: /conf}
+            # readOnlyRootFilesystem: true needs writable scratch
+            - {name: scratch, mountPath: /tmp}
+      volumes:
+        - {name: scratch, emptyDir: {}}
+        - name: conf
+          configMap: {name: {{ $n }}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  selector: {app: {{ $n }}}
+  ports:
+    - {name: otlp-grpc, port: 4317, targetPort: 4317}
+    - {name: otlp-http, port: 4318, targetPort: 4318}
+    - {name: metrics,   port: 8889, targetPort: 8889}

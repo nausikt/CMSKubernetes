@@ -1,0 +1,6 @@
+apiVersion: v2
+name: archi-crab-obs-backends
+description: Shared observability backends (Grafana, Prometheus, Langfuse) for all environments
+type: application
+version: 0.7.2
+appVersion: "0.7.2"

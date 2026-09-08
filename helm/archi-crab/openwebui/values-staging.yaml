@@ -1,0 +1,9 @@
+env: staging
+nameSuffix: "-staging"
+namespace: archi-crab-staging
+host: archi-crab-staging.cern.ch
+gateway:
+  baseName: archi-crab
+  namespace: archi-crab-gw
+  timeout: 3600s
+

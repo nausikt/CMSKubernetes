@@ -1,0 +1,19 @@
+# ONE PER ENVIRONMENT (D-D): the collector config is exactly what a non-prod
+# environment exists to test. Backends are shared; the collector is not.
+env: prod
+nameSuffix: ""
+namespace: archi-crab
+obsNamespace: archi-crab-obs
+
+image: otel/opentelemetry-collector-contrib:0.115.1
+
+langfuse:
+  enabled: true
+  authSecret: langfuse-otlp-auth     # Basic pk:sk, base64. Must pre-exist.
+
+# Prompts and completions may carry data that should not leave the environment.
+# Decide this BEFORE wiring: once a trace is stored, removing it is a database
+# operation, not a config change.
+redactAttributes:
+  - gen_ai.prompt
+  - gen_ai.completion

@@ -1,0 +1,96 @@
+# =============================================================================
+# SHARED across prod and preprod, deliberately (D-D).
+#
+# These hold heavy state (Prometheus TSDB, Langfuse Postgres + ClickHouse).
+# Duplicating them per environment doubles storage on a testbed for no
+# isolation benefit, and makes prod-vs-preprod comparison impossible.
+#
+# The price: preprod traffic lands in the same dashboards as prod. That is
+# paid for by deployment.environment on EVERY signal (F13). Without that
+# label the dashboards cannot be filtered and this decision becomes wrong.
+# =============================================================================
+
+namespace: archi-crab-obs
+
+# ---------------------------------------------------------------------------
+# The admin surface: Grafana and Langfuse UIs on archi-crab-testbed.cern.ch.
+#
+# Its OWN Gateway, in the shared obs namespace, deliberately:
+#   - obs is shared across environments, so it belongs to none of their Gateways
+#   - these are the UIs you debug WITH; putting them behind the prod Gateway
+#     means a prod Gateway change can cost you the ability to see what broke
+#
+# TLS secret lives HERE, beside this Gateway (certificateRef resolves in the
+# Gateway's own namespace).
+# ---------------------------------------------------------------------------
+gateway:
+  create: true
+  name: archi-crab-obs
+  className: cilium
+  address: "TODO_GW_VIP_TESTBED"
+  listeners:
+    - host: archi-crab-testbed.cern.ch
+      tlsSecret: archi-crab-testbed-tls
+
+# ############################################################################
+# archi-crab-testbed.cern.ch is REACHABLE FROM THE CERN NETWORK.
+#
+# Langfuse holds traces. Traces can contain prompts, tool arguments and user
+# identifiers. Grafana holds every metric in the stack. Exposing either without
+# authentication publishes that to anyone who can resolve the hostname.
+#
+# routes.*.enabled defaults to FALSE for exactly this reason. Turn one on only
+# after its own auth is configured and verified (Phase 9.4).
+# ############################################################################
+routes:
+  grafana:  {enabled: false, service: grafana,      port: 80}
+  langfuse: {enabled: false, service: langfuse-web, port: 3000}
+  # Both on one hostname needs path splitting, which is exactly the rewrite
+  # pain host-based routing avoids elsewhere. Start with Grafana only; give
+  # Langfuse its own hostname when you want it exposed.
+
+# ---------------------------------------------------------------------------
+# BLOCKED ON STORAGE. Langfuse needs Postgres AND ClickHouse.
+#   kubectl get csidrivers; kubectl get storageclass
+# Empty -> set langfuse.enabled=false and traces have nowhere to land.
+# ---------------------------------------------------------------------------
+# CERN Magnum: cinder-<TYPE> (Retain) or cinder-<TYPE>-delete (Delete).
+# "" uses the cluster default, which on this cluster may not exist at all.
+#
+# ⚠ A StorageClass is a POINTER. It binds nothing unless csi-cinder-*plugin
+# pods are running. Verify with `kubectl get csidrivers` before enabling
+# anything below -- an unbound PVC leaves the whole release Progressing.
+storageClass: "cinder-standard"
+
+# Set BOTH to false until the CSI driver exists (Runbook 0.1 / F33). The rest
+# of the stack has no PVC dependency and can be built meanwhile; Grafana runs
+# without persistence at the cost of losing dashboards on restart.
+
+
+grafana:
+  enabled: true
+  # CERN SSO via generic OAuth. Do NOT rely on the built-in admin login for
+  # anything reachable off-cluster: it is a shared password with no audit trail.
+  auth:
+    oauth: true
+    allowedGroups: "TODO_CERN_EGROUP"
+  # Self-hosted, not MONIT's. MONIT has no trace backend (F24), so the trace
+  # datasource has to be local anyway; running the whole Grafana locally keeps
+  # metrics and traces in one place. MONIT export is a later addition, not a
+  # replacement.
+  adminSecret: grafana-admin
+  persistence: {size: 5Gi}
+
+prometheus:
+  enabled: true
+  retention: 15d
+  persistence: {size: 50Gi}
+  # Scrape targets are discovered by label, so a new env needs no edit here.
+  scrapeSelector:
+    app.kubernetes.io/part-of: archi-crab
+
+langfuse:
+  enabled: true
+  # Trace store. OTLP ingest at /api/public/otel.
+  postgres: {persistence: {size: 20Gi}}
+  clickhouse: {persistence: {size: 50Gi}}

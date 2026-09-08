@@ -1,0 +1,35 @@
+{{- range $srv := .Values.servers }}
+---
+# Host-based routing: one hostname per MCP server. Avoids prefix-stripping and
+# .well-known/oauth-protected-resource rewrite rules entirely.
+#
+# Attaching to the SHARED Gateway requires BOTH:
+#   - the listener for this hostname admitting this namespace (env selector)
+#   - this route naming the Gateway's namespace explicitly
+# NotAllowedByListeners -> wrong namespace label, or hostname has no listener.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "mcp.serverName" (dict "srv" $srv "ctx" $) }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "3"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  parentRefs:
+    # The ONE shared Gateway. Not suffixed: prod and staging attach to the same
+    # Gateway on different listeners.
+    - name: {{ $.Values.gateway.baseName }}
+      namespace: {{ $.Values.gateway.namespace }}
+  hostnames:
+    - {{ $srv.host | quote }}
+  rules:
+    - backendRefs:
+        - name: {{ include "mcp.proxyService" (dict "srv" $srv "ctx" $) }}
+          port: {{ $srv.port | default 8080 }}
+      # MCP holds long-lived streaming connections; the default timeout drops
+      # SSE mid-session and tools/list still passes, so it hides from smoke tests.
+      timeouts:
+        backendRequest: {{ $.Values.gateway.timeout }}
+        request: {{ $.Values.gateway.timeout }}
+{{- end }}

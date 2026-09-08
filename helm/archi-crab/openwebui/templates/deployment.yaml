@@ -1,0 +1,65 @@
+{{- if .Values.enabled }}
+{{- $n := include "archi.name" (dict "base" "openwebui" "ctx" $) }}
+{{- $llm := include "archi.name" (dict "base" .Values.litellm.baseName "ctx" $) }}
+# SKELETON. Enough to route to and to prove the auth path; the rest is yours.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: {{ $n }}}}
+  template:
+    metadata:
+      labels:
+        app: {{ $n }}
+{{ include "archi.labels" . | indent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+{{ include "archi.podSecurityContext" . | indent 8 }}
+      containers:
+        - name: openwebui
+          securityContext:
+{{ include "archi.containerSecurityContext" . | indent 12 }}
+          image: {{ .Values.image }}
+          env:
+            # Models go through THIS environment's LiteLLM, never a provider.
+            - {name: OPENAI_API_BASE_URL, value: "http://{{ $llm }}.{{ .Values.namespace }}.svc.cluster.local:4000/v1"}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.litellm.secretName }}, key: OPENWEBUI_VIRTUAL_KEY}
+            - {name: OAUTH_PROVIDER_NAME, value: "CERN"}
+            - {name: OPENID_PROVIDER_URL, value: "{{ .Values.oidc.issuer }}/.well-known/openid-configuration"}
+            - {name: OAUTH_CLIENT_ID, value: {{ .Values.oidc.clientId | quote }}}
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.oidc.secretName }}, key: client-secret}
+            - {name: WEBUI_URL, value: "https://{{ .Values.host }}"}
+            - {name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment={{ .Values.env }}"}
+          ports: [{containerPort: 8080}]
+          volumeMounts:
+            # readOnlyRootFilesystem: true needs writable scratch
+            - {name: scratch, mountPath: /app/backend/data}
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits:   {cpu: 1, memory: 2Gi}
+      volumes:
+        - {name: scratch, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  selector: {app: {{ $n }}}
+  ports: [{port: 8080, targetPort: 8080}]
+{{- end }}

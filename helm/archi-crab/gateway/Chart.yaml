@@ -1,0 +1,6 @@
+apiVersion: v2
+name: archi-crab-gateway
+description: The single shared Gateway for the ARCHI-CRAB stack (LanDB host-network topology)
+type: application
+version: 0.7.2
+appVersion: "0.7.2"

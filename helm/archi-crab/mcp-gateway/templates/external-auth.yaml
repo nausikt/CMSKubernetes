@@ -1,0 +1,35 @@
+# Embedded authorization server, upstream = CERN SSO.
+#
+# WHY: CERN has no dynamic client registration -- every client must be
+# pre-registered in the Application Portal. The embedded auth server supplies
+# the DCR endpoint CERN lacks, so ToolHive is the ONLY client CERN ever sees.
+#
+# TODO verify field names: kubectl explain mcpexternalauthconfig.spec --recursive
+apiVersion: {{ .Values.apiVersions.mcpExternalAuthConfig }}
+kind: MCPExternalAuthConfig
+metadata:
+  name: {{ include "archi.name" (dict "base" "cern-embedded-auth" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  type: embeddedAuthServer
+  embeddedAuthServer:
+    upstream:
+      issuer: {{ .Values.cern.issuer | quote }}
+      clientId: {{ .Values.cern.clientId | quote }}
+      clientSecretRef:
+        name: {{ .Values.cern.clientSecret.secretName }}
+        key: {{ .Values.cern.clientSecret.key }}
+      scopes: {{ .Values.cern.scopes | toJson }}
+    jwtSigningKeyRef:
+      name: {{ .Values.cern.jwtSigningKey.secretName }}
+      key: {{ .Values.cern.jwtSigningKey.key }}
+{{- if .Values.redis.enabled }}
+    storage:
+      type: redis
+      redis:
+        mode: standalone
+        address: {{ include "archi.name" (dict "base" "redis-thv-auth" "ctx" $) }}.{{ .Values.namespace }}.svc.cluster.local:6379
+{{- end }}

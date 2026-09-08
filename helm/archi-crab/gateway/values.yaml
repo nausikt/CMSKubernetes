@@ -1,0 +1,60 @@
+# =============================================================================
+# THE SINGLE GATEWAY.
+#
+# WHY ONE, not one per environment:
+# LanDB round-robin aliases point every hostname at the SAME three worker node
+# IPs. Cilium's Gateway therefore binds the HOST network on :443, and only one
+# Gateway can hold that port per node. There is no VIP to pin and no Octavia LB.
+#
+# ISOLATION IS PRESERVED PER LISTENER, not per Gateway. Each listener carries
+# its own allowedRoutes selector, so a staging namespace cannot attach a route
+# to a prod hostname even though both listeners live on one Gateway.
+#
+# ⚠ TWO CLUSTER-LEVEL PREREQUISITES, both in cluster/CLUSTER.md:
+#     1. gateway-api-hostnetwork-enabled: "true"   (done)
+#     2. NET_BIND_SERVICE on the cilium agent AND cilium-envoy, plus
+#        keepCapNetBindService: true.  443 is a PRIVILEGED PORT: without this
+#        the Gateway comes up and the listener silently never binds.
+#
+# ⚠ ALL TLS SECRETS LIVE IN THIS NAMESPACE. A listener resolves certificateRef
+#   in the GATEWAY's namespace, so all five CERN host certificates land here,
+#   not in the environment namespaces.
+# =============================================================================
+
+namespace: archi-crab-gw
+name: archi-crab
+className: cilium
+
+# NOTE: there is NO hostNetwork setting here.
+#
+# Which nodes bind :443 is decided cluster-wide by Cilium's
+# gatewayAPI.hostNetwork.nodes.matchLabels, not by this chart. See
+# cluster/CLUSTER.md. On this cluster the workers carry no role label, so they
+# are labelled explicitly:
+#
+#   kubectl label node <worker> archi-crab.cern.ch/edge=true
+#
+# and Cilium selects on archi-crab.cern.ch/edge: "true".
+
+# ---------------------------------------------------------------------------
+# Listeners. `env` selects which namespaces may attach:
+#   prod    -> archi-crab-staging CANNOT claim this hostname
+#   staging -> archi-crab CANNOT claim this hostname
+#   shared  -> only the obs namespace
+# ---------------------------------------------------------------------------
+listeners:
+  - host: crab-mcp-gateway.cern.ch
+    tlsSecret: crab-mcp-gateway-tls
+    env: prod
+  - host: archi-crab.cern.ch
+    tlsSecret: archi-crab-tls
+    env: prod
+  - host: crab-mcp-gateway-staging.cern.ch
+    tlsSecret: crab-mcp-gateway-staging-tls
+    env: staging
+  - host: archi-crab-staging.cern.ch
+    tlsSecret: archi-crab-staging-tls
+    env: staging
+  - host: archi-crab-testbed.cern.ch
+    tlsSecret: archi-crab-testbed-tls
+    scope: shared

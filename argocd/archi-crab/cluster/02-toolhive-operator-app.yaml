@@ -1,0 +1,36 @@
+# ############################################################################
+# CLUSTER-SCOPED AND SHARED BY BOTH ENVIRONMENTS.
+#
+# There is exactly ONE copy of this for prod and preprod together. An upgrade
+# here is a PROD CHANGE even when you are "testing in preprod" (F1). Treat it
+# as such: schedule it, and have a rollback ready.
+#
+# If another team already owns this on the cluster, DELETE this file rather
+# than syncing -- two Argo Applications managing the same CRDs will fight.
+# ############################################################################
+#
+# rbac.scope=cluster => ONE operator watches BOTH environments (D-C).
+# Reversal: switch to scope=namespace and run one operator per env if you need
+# to test an operator upgrade without touching prod. That also requires
+# features.storageVersionMigrator=false, or the chart fails at render.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-toolhive-operator
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "-8"}
+spec:
+  project: archi-crab
+  source:
+    chart: toolhive-operator
+    repoURL: ghcr.io/stacklok/toolhive
+    targetRevision: "TODO_THV_OPERATOR_VER"
+    helm:
+      valuesObject:
+        operator:
+          replicaCount: 1                    # raise only with >=2 schedulable nodes
+          rbac: {scope: cluster}
+  destination: {server: https://kubernetes.default.svc, namespace: toolhive-system}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

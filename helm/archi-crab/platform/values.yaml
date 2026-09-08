@@ -1,0 +1,10 @@
+# Per-environment namespace only.
+#
+# The Gateway moved to helm/archi-crab/gateway -- there is exactly ONE for the
+# whole stack, because LanDB round-robin points every hostname at the same
+# three node IPs and only one Gateway can hold :443 per node. Isolation is
+# preserved by PER-LISTENER allowedRoutes selectors, keyed on the env label
+# this chart applies.
+env: prod
+nameSuffix: ""
+namespace: archi-crab

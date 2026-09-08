@@ -1,0 +1,82 @@
+{{- $n := include "archi.name" (dict "base" "litellm" "ctx" $) }}
+{{- $otel := include "archi.name" (dict "base" .Values.telemetry.collectorBase "ctx" $) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $n }}-config
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+data:
+  config.yaml: |
+    model_list:
+{{- if .Values.models }}
+{{ toYaml .Values.models | indent 6 }}
+{{- else }}
+      []   # TODO populate. See values.yaml for why there is no quality chain.
+{{- end }}
+    litellm_settings:
+      drop_params: true
+{{- if .Values.telemetry.otel }}
+      callbacks: ["otel"]
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector: {matchLabels: {app: {{ $n }}}}
+  template:
+    metadata:
+      labels:
+        app: {{ $n }}
+{{ include "archi.labels" . | indent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+{{ include "archi.podSecurityContext" . | indent 8 }}
+      containers:
+        - name: litellm
+          securityContext:
+{{ include "archi.containerSecurityContext" . | indent 12 }}
+          image: {{ .Values.image }}
+          args: ["--config", "/conf/config.yaml", "--port", "4000"]
+          envFrom: [{secretRef: {name: {{ .Values.secretName }}}}]
+          env:
+{{- if .Values.telemetry.otel }}
+            - {name: LITELLM_OTEL_V2, value: "true"}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://{{ $otel }}.{{ .Values.namespace }}.svc.cluster.local:4318"
+{{- end }}
+            - {name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment={{ .Values.env }}"}
+          ports: [{containerPort: 4000}]
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits:   {cpu: 1, memory: 1Gi}
+          volumeMounts:
+            - {name: conf, mountPath: /conf}
+            # readOnlyRootFilesystem: true needs writable scratch
+            - {name: scratch, mountPath: /tmp}
+      volumes:
+        - {name: scratch, emptyDir: {}}
+        - name: conf
+          configMap: {name: {{ $n }}-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  selector: {app: {{ $n }}}
+  ports: [{port: 4000, targetPort: 4000}]

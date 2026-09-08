@@ -1,0 +1,58 @@
+{{- $n := include "archi.name" (dict "base" "otel-collector" "ctx" $) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc: {endpoint: 0.0.0.0:4317}
+          http: {endpoint: 0.0.0.0:4318}
+
+    processors:
+      batch: {}
+      resource:
+        attributes:
+          # THE JOIN KEY. Backends are shared across environments; without this
+          # on every signal the dashboards cannot be filtered and sharing them
+          # becomes the wrong decision (F13).
+          - {key: deployment.environment, value: {{ .Values.env }}, action: upsert}
+          - {key: service.namespace, value: archi-crab, action: upsert}
+{{- if .Values.redactAttributes }}
+      attributes/redact:
+        actions:
+{{- range .Values.redactAttributes }}
+          - {key: {{ . }}, action: delete}
+{{- end }}
+{{- end }}
+
+    exporters:
+{{- if .Values.langfuse.enabled }}
+      otlphttp/langfuse:
+        endpoint: http://langfuse-web.{{ .Values.obsNamespace }}.svc.cluster.local:3000/api/public/otel
+        headers:
+          Authorization: ${env:LANGFUSE_AUTH}
+{{- end }}
+      prometheus:
+        endpoint: 0.0.0.0:8889
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch, resource]
+          exporters: [{{ if .Values.langfuse.enabled }}otlphttp/langfuse{{ end }}]
+        metrics:
+          receivers: [otlp]
+          processors: [batch, resource]
+          exporters: [prometheus]
+        logs:
+          receivers: [otlp]
+          processors: [batch, resource{{ if .Values.redactAttributes }}, attributes/redact{{ end }}]
+          exporters: [{{ if .Values.langfuse.enabled }}otlphttp/langfuse{{ end }}]

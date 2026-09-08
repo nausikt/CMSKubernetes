@@ -1,0 +1,56 @@
+{{- range $srv := .Values.servers }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpServer }}
+kind: MCPServer
+metadata:
+  name: {{ include "mcp.serverName" (dict "srv" $srv "ctx" $) }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  image: {{ $srv.image }}
+  transport: {{ $srv.transport | default "streamable-http" }}
+  mcpPort: {{ $srv.port | default 8080 }}
+  proxyPort: {{ $srv.port | default 8080 }}
+
+  # Validates the ToolHive-issued JWT the client presents.
+  oidcConfigRef:
+    name: thv-issued-{{ include "mcp.serverName" (dict "srv" $srv "ctx" $) }}
+
+  # Runs the CERN SSO flow and injects the user's upstream token downstream.
+  authServerRef:
+    name: {{ include "archi.name" (dict "base" "cern-embedded-auth" "ctx" $) }}
+
+  # TLS terminates at the Gateway. Without this the proxy advertises internal
+  # hostnames / http:// in its OAuth discovery document (F11).
+  trustProxyHeaders: true
+
+{{- if $.Values.telemetry.enabled }}
+  telemetryConfigRef:
+    name: {{ include "archi.name" (dict "base" "otel" "ctx" $) }}
+    serviceName: mcp-{{ include "mcp.serverName" (dict "srv" $srv "ctx" $) }}
+{{- end }}
+
+  resources:
+{{ toYaml $srv.resources.proxy | indent 4 }}
+
+  podTemplateSpec:
+    spec:
+      containers:
+        - name: mcp                      # this name is MANDATORY
+          resources:
+{{ toYaml $srv.resources.backend | indent 12 }}
+{{- if $srv.writablePaths }}
+          volumeMounts:
+{{- range $i, $p := $srv.writablePaths }}
+            - name: scratch-{{ $i }}
+              mountPath: {{ $p }}
+{{- end }}
+      volumes:
+{{- range $i, $p := $srv.writablePaths }}
+        - name: scratch-{{ $i }}
+          emptyDir: {}
+{{- end }}
+{{- end }}
+{{- end }}

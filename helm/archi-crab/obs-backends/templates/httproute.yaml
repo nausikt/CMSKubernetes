@@ -1,0 +1,25 @@
+{{- $host := .Values.host }}
+{{- range $k, $r := .Values.routes }}
+{{- if $r.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $k }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+  labels:
+    app.kubernetes.io/part-of: archi-crab
+    archi-crab.cern.ch/scope: shared
+spec:
+  parentRefs:
+    - name: {{ $.Values.gateway.name }}
+      namespace: {{ $.Values.gateway.namespace }}
+  hostnames:
+    - {{ $host | quote }}
+  rules:
+    - backendRefs:
+        - name: {{ $r.service }}
+          port: {{ $r.port }}
+{{- end }}
+{{- end }}

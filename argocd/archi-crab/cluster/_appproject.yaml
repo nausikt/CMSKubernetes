@@ -1,0 +1,41 @@
+# ############################################################################
+# Without an AppProject, every Application here runs under `default`, which
+# permits ANY source repo, ANY destination namespace and ANY resource kind.
+# On a shared cluster that means a bad merge in this repo can deploy into
+# another team's namespace.
+#
+# This project pins: our repo only, our namespaces only, and an explicit list
+# of cluster-scoped kinds we are allowed to create.
+# ############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: archi-crab
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "-20"}
+spec:
+  description: ARCHI-CRAB MCP platform
+  sourceRepos:
+    - https://github.com/nausikt/CMSKubernetes.git
+    - https://github.com/kubernetes-sigs/gateway-api
+    - ghcr.io/stacklok/toolhive
+  destinations:
+    - {server: https://kubernetes.default.svc, namespace: archi-crab}
+    - {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+    - {server: https://kubernetes.default.svc, namespace: archi-crab-obs}
+    - {server: https://kubernetes.default.svc, namespace: archi-crab-gw}
+    - {server: https://kubernetes.default.svc, namespace: toolhive-system}
+  # Cluster-scoped kinds we may create. Anything absent here is REFUSED --
+  # notably ClusterRoleBinding, which is how an Application would escalate.
+  clusterResourceWhitelist:
+    - {group: apiextensions.k8s.io, kind: CustomResourceDefinition}
+    - {group: "", kind: Namespace}
+    - {group: rbac.authorization.k8s.io, kind: ClusterRole}
+    - {group: rbac.authorization.k8s.io, kind: ClusterRoleBinding}
+    - {group: admissionregistration.k8s.io, kind: ValidatingWebhookConfiguration}
+    - {group: admissionregistration.k8s.io, kind: MutatingWebhookConfiguration}
+    - {group: gateway.networking.k8s.io, kind: GatewayClass}
+  namespaceResourceBlacklist:
+    # Nothing in this stack needs to mint tokens or bind cluster roles inside
+    # a namespace; blocking them removes an escalation path from a bad merge.
+    - {group: "", kind: ServiceAccount}

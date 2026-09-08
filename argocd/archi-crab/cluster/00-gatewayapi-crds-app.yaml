@@ -1,0 +1,32 @@
+# ############################################################################
+# CLUSTER-SCOPED AND SHARED BY BOTH ENVIRONMENTS.
+#
+# There is exactly ONE copy of this for prod and preprod together. An upgrade
+# here is a PROD CHANGE even when you are "testing in preprod" (F1). Treat it
+# as such: schedule it, and have a rollback ready.
+#
+# If another team already owns this on the cluster, DELETE this file rather
+# than syncing -- two Argo Applications managing the same CRDs will fight.
+# ############################################################################
+#
+# EXPERIMENTAL channel, not standard: standard omits TLSRoute and Cilium's
+# Gateway reconciler then hangs at PROGRAMMED=Unknown with no useful error (F19).
+#
+# TODO targetRevision: match YOUR Cilium minor (F18).
+#   kubectl -n kube-system get ds cilium -o jsonpath='{.spec.template.spec.containers[0].image}'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-gatewayapi-crds
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "-10"}
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/kubernetes-sigs/gateway-api
+    targetRevision: v1.3.0
+    path: config/crd/experimental
+  destination: {server: https://kubernetes.default.svc, namespace: toolhive-system}
+  syncPolicy:
+    automated: {prune: false, selfHeal: true}
+    syncOptions: [ServerSideApply=true]      # CRDs exceed the 256KB annotation limit (F2)

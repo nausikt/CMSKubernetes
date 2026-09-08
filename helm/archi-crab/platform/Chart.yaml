@@ -1,0 +1,6 @@
+apiVersion: v2
+name: archi-crab-platform
+description: Namespaces and per-environment Gateway for the ARCHI-CRAB stack
+type: application
+version: 0.7.2
+appVersion: "0.7.2"

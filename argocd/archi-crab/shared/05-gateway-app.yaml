@@ -1,0 +1,24 @@
+# The ONE Gateway for the whole stack.
+#
+# Shared, not per-env: LanDB round-robin points every hostname at the same three
+# node IPs, Cilium binds :443 on the host network, and only one Gateway can hold
+# that port per node. Isolation lives in PER-LISTENER allowedRoutes selectors.
+#
+# All five CERN host certificates live in archi-crab-gw, beside this Gateway.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-gateway
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "-6"}
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/CMSKubernetes.git
+    targetRevision: archi-crab-testbed
+    path: helm/archi-crab/gateway
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-gw}
+  syncPolicy:
+    # prune:false -- owns the shared edge. Pruning it takes down every hostname.
+    automated: {prune: false, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

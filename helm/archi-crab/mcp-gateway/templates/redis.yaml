@@ -1,0 +1,75 @@
+{{- if .Values.redis.enabled }}
+{{- $n := include "archi.name" (dict "base" "redis-thv-auth" "ctx" $) }}
+# ############################################################################
+# THIS REDIS HOLDS LIVE CERN USER ACCESS TOKENS.
+#
+# The embedded auth server stores each user's upstream CERN access, refresh and
+# ID tokens here, keyed by session id. Read access to this Redis is read access
+# to every logged-in user's CERN credentials.
+#
+# Therefore, and none of these are optional:
+#   - AUTH password required (an unauthenticated Redis in a shared cluster is
+#     a credential dump waiting for anyone who can reach the Service)
+#   - NetworkPolicy: only the ToolHive proxy pods may connect
+#   - no persistence: tokens are not written to disk
+#   - hardened container: non-root, read-only rootfs, no capabilities
+# ############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: {{ $n }}}}
+  template:
+    metadata:
+      labels:
+        app: {{ $n }}
+{{ include "archi.labels" . | indent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+{{ include "archi.podSecurityContext" . | indent 8 }}
+      containers:
+        - name: redis
+          image: {{ .Values.redis.image }}
+          securityContext:
+{{ include "archi.containerSecurityContext" . | indent 12 }}
+          # --requirepass via env, never on the command line: argv is visible
+          # in `ps` to anything sharing the PID namespace and in `kubectl
+          # describe pod` to anyone with read access to the namespace.
+          command: ["sh", "-c"]
+          args:
+            - exec redis-server --save '' --appendonly no --requirepass "$REDIS_PASSWORD"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.redis.authSecret }}
+                  key: password
+          ports: [{containerPort: 6379}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits:   {cpu: 200m, memory: 256Mi}
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        # emptyDir, and no AOF/RDB above: user tokens never reach disk.
+        - name: data
+          emptyDir: {medium: Memory}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  selector: {app: {{ $n }}}
+  ports: [{port: 6379, targetPort: 6379}]
+{{- end }}

@@ -25,6 +25,11 @@ namespace: archi-crab-gw
 name: archi-crab
 className: cilium
 
+# Octavia LB quota is 0 (SNOW <ticket>). Reached via NodePort on the existing
+# LanDB aliases until that lands. PINNED: a reassigned port invalidates every
+# OAuth redirect URI and every resourceUrl.
+nodePort: 31393
+
 # NOTE: there is NO hostNetwork setting here.
 #
 # Which nodes bind :443 is decided cluster-wide by Cilium's

@@ -1,3 +1,12 @@
 env: staging
 nameSuffix: "-staging"
 namespace: archi-crab-staging
+
+# Langfuse is not deployed yet (obs-backends ships only the namespace and the
+# Grafana datasource ConfigMap; the upstream chart Applications were never
+# written). With this false the traces/logs exporters are omitted and the
+# collector stops waiting on a secret that cannot exist.
+# RE-ENABLE when Langfuse lands, together with the redaction canary (P3.4)
+# and the real-span check (P3.6) -- both were SKIPPED because of this.
+langfuse:
+  enabled: false

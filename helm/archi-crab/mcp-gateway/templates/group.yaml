@@ -1,0 +1,10 @@
+# The trust boundary. Everything in this group shares one vMCP audience, so a
+# client token works across every member. Only add MCPs owned by the same team.
+apiVersion: {{ .Values.apiVersions.mcpGroup }}
+kind: MCPGroup
+metadata:
+  name: {{ include "archi.name" (dict "base" .Values.group.name "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}

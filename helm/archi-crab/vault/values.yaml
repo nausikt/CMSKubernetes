@@ -1,0 +1,36 @@
+# =============================================================================
+# Secrets from CERN Vault via the Vault Secrets Operator.
+#
+# The workloads reference these Secrets BY NAME and know nothing about Vault.
+# That is the whole integration: swapping provider later touches this chart only.
+# =============================================================================
+env: prod
+namespace: archi-crab
+
+vault:
+  address: "https://woger-vault.cern.ch"   # testbed sandbox
+  # woger is CERN-CA signed and the VSO image ships public roots only.
+  # Without this you get a TLS error that reads like a network problem.
+  caSecret: cern-ca-bundle
+  mount: archi-crab
+  authMount: kubernetes
+  role: archi-crab
+  serviceAccount: archi-crab-vault
+  # MUST match the `audience` in the Vault role exactly. A mismatch fails as a
+  # generic permission denied that never mentions audience.
+  audience: "https://kubernetes.default.svc.cluster.local"
+  pathPrefix: prod
+
+refreshAfter: 1h
+
+# destination.name is the name every other chart already references.
+secrets:
+  - {name: thv-jwt-signing,      path: thv-jwt-signing}   # per env, never shared
+  - {name: thv-hmac,             path: thv-hmac}          # NEW in 0.8.0 (vMCP)
+  - {name: redis-thv-auth,       path: redis-thv-auth}
+  - {name: toolhive-idp-secret,  path: toolhive-idp}      # vMCP upstream client
+  - {name: openwebui-idp-secret, path: openwebui-idp}     # OpenWebUI's own client
+  - {name: monit-grafana,        path: monit-grafana}
+  - {name: crab-robot-cert,      path: robot-cert}
+  - {name: htcondor-idtokens,    path: htcondor-idtokens}
+  - {name: litellm-keys,         path: litellm-keys}

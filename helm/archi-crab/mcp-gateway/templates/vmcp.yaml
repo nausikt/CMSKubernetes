@@ -1,0 +1,58 @@
+{{- $n := include "archi.name" (dict "base" .Values.vmcp.name "ctx" $) }}
+# The only public surface. One hostname, one CERN client, one redirect URI,
+# one Cedar policy, one aggregated tool list.
+#
+# TODO verify every field name against your operator build:
+#   kubectl explain virtualmcpserver.spec --recursive
+apiVersion: {{ .Values.apiVersions.virtualMCPServer }}
+kind: VirtualMCPServer
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "3"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  groupRef:
+    name: {{ include "archi.name" (dict "base" .Values.group.name "ctx" $) }}
+
+  outgoingAuth:
+    # discovered: backends found at runtime via the K8s API -- adding one needs
+    # no vMCP change. `inline` has a smaller attack surface but must be edited
+    # and restarted per backend.
+    source: {{ .Values.vmcp.backendDiscovery }}
+    # Replay the stored CERN token downstream, so backend apps keep validating
+    # iss=auth.cern.ch and aud={{ .Values.cern.clientId }} exactly as they do today.
+    defaultStrategy: {{ .Values.vmcp.outgoingStrategy }}
+
+  authServerConfig:
+    issuer: {{ .Values.vmcp.authServer.issuer | quote }}
+    # BOTH refs required in practice. Signing keys sign the JWTs; HMAC secrets
+    # decode authorization codes and refresh tokens. Omit either and ToolHive
+    # auto-generates EPHEMERAL keys -- every pod restart invalidates all tokens
+    # and forces every user to re-authenticate.
+    signingKeySecretRefs:
+      - name: {{ .Values.vmcp.authServer.signingKeySecret.name }}
+        key: {{ .Values.vmcp.authServer.signingKeySecret.key }}
+    hmacSecretRefs:
+      - name: {{ .Values.vmcp.authServer.hmacSecret.name }}
+        key: {{ .Values.vmcp.authServer.hmacSecret.key }}
+    tokenLifespans:
+{{ toYaml .Values.vmcp.authServer.tokenLifespans | indent 6 }}
+    upstreamProviders:
+      # ONE provider = one login. Multiple providers chain sequentially and the
+      # user is redirected to each in turn.
+      - name: cern
+        type: oidc
+        oidcConfig:
+          issuer: {{ .Values.cern.issuer | quote }}
+          clientId: {{ .Values.cern.clientId | quote }}
+          clientSecretRef:
+            name: {{ .Values.cern.clientSecret.secretName }}
+            key: {{ .Values.cern.clientSecret.key }}
+          scopes: {{ .Values.cern.scopes | toJson }}
+
+{{- if .Values.authz.enabled }}
+  authzConfigRef:
+    name: {{ include "archi.name" (dict "base" "cedar" "ctx" $) }}
+{{- end }}

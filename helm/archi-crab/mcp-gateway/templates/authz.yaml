@@ -1,0 +1,19 @@
+{{- if .Values.authz.enabled }}
+# ONE Cedar policy over the aggregated tool surface -- the vMCP dividend.
+#
+# ROLLOUT: keep the backends' OPERATOR_USERNAMES populated while this shadows
+# them. Cedar denies BEFORE the backend is reached, so a policy bug presents as
+# a broken tool rather than a denied one. Empty those env vars only after a week
+# with no divergence between gateway and app denials.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "archi.name" (dict "base" "cedar" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+data:
+  policy.cedar: |
+{{ .Values.authz.policies | indent 4 }}
+{{- end }}

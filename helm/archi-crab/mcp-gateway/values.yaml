@@ -1,12 +1,19 @@
 # =============================================================================
 # crab-mcp-gateway  --  ONE RELEASE PER ENVIRONMENT
 #
-# NAMING: prod unsuffixed, non-prod "-<env>".  nameSuffix is the only knob.
+# ARCHITECTURE: three backend MCPServers in an MCPGroup, fronted by ONE
+# VirtualMCPServer. Clients see one hostname and one aggregated tool list.
 #
-# AUTH MODEL: ToolHive runs its own OAuth authorization server in-process. MCP
-# clients register with IT (via DCR) and get ToolHive-issued JWTs. ToolHive runs
-# the real login against CERN SSO as ONE pre-registered client and injects the
-# user's CERN token into the backend container per request.
+#   client --ToolHive JWT--> vMCP --upstreamInject--> backend (CERN token)
+#                             |  embedded auth server: ONE login at CERN SSO
+#                             |  Cedar: ONE policy over the whole tool surface
+#
+# WHY: per-MCPServer hostnames cost 2 hostnames + 2 certs + 2 redirect URIs per
+# server per environment. vMCP makes that flat: 5 hostnames forever.
+#
+# WHAT IT COSTS: per-server audience isolation. One vMCP = one issued-JWT
+# audience, so a client token works across every backend in the group.
+# THE TRUST BOUNDARY IS THE GROUP -- another team's MCP must NOT join it.
 # =============================================================================
 
 env: prod
@@ -14,81 +21,166 @@ nameSuffix: ""
 namespace: archi-crab
 obsNamespace: archi-crab-obs
 
-# VERIFY against your operator build before syncing (F17):
+# VERIFY against your operator build before syncing:
 #   kubectl api-resources --api-group=toolhive.stacklok.dev -o wide
 apiVersions:
   mcpServer: toolhive.stacklok.dev/v1beta1
+  mcpGroup: toolhive.stacklok.dev/v1alpha1
+  virtualMCPServer: toolhive.stacklok.dev/v1alpha1
   mcpOIDCConfig: toolhive.stacklok.dev/v1beta1
-  mcpExternalAuthConfig: toolhive.stacklok.dev/v1alpha1
   mcpTelemetryConfig: toolhive.stacklok.dev/v1alpha1
+
+group:
+  name: crab
+
+# ---------------------------------------------------------------------------
+# The vMCP: the only public surface. One hostname, one CERN client, one
+# redirect URI, one Cedar policy.
+# ---------------------------------------------------------------------------
+vmcp:
+  name: crab-mcp-gateway
+  host: crab-mcp-gateway.cern.ch
+  port: 8080
+
+  # Replay the stored CERN token to each backend, so every backend app keeps
+  # validating iss=auth.cern.ch and aud=<the upstream clientId below>.
+  outgoingStrategy: upstreamInject
+  backendDiscovery: discovered      # runtime via K8s API; `inline` = smaller
+                                    # attack surface, but edit+restart per backend
+
+  authServer:
+    # ToolHive becomes an OIDC issuer at this URL.
+    issuer: "https://crab-mcp-gateway.cern.ch"
+    # BOTH refs are required in practice. Omit either and ToolHive generates
+    # EPHEMERAL keys: every pod restart invalidates all tokens and forces every
+    # user to re-authenticate. Tested by the restart check in the runbook.
+    signingKeySecret: {name: thv-jwt-signing, key: private-key}
+    hmacSecret:       {name: thv-hmac,        key: hmac-key}
+    tokenLifespans:
+      accessTokenLifespan: 1h
+      refreshTokenLifespan: 168h
+      authCodeLifespan: 10m
 
 cern:
   issuer: "https://auth.cern.ch/auth/realms/cern"
-  clientId: "TODO_CERN_CLIENT_ID"
+  jwksUri: "https://auth.cern.ch/auth/realms/cern/protocol/openid-connect/certs"
+  # The CERN SSO client the vMCP uses upstream. Its name IS the audience the
+  # backend apps validate on the replayed token -- keep them in step.
+  clientId: "crab-mcp-gateway"
+  clientSecret: {secretName: toolhive-idp-secret, key: client-secret}
   scopes: [openid, profile, email]
-  # Secrets pre-exist per namespace. Use DIFFERENT signing keys per env, or a
-  # staging-issued JWT is valid in prod and the isolation is gone.
-  clientSecret: {secretName: cern-idp-secret, key: client-secret}
-  jwtSigningKey: {secretName: thv-jwt-signing, key: private-key}
 
-gateway:
-  # The ONE shared Gateway, in the shared edge namespace. NOT suffixed --
-  # prod and staging attach to the same Gateway on different listeners.
-  baseName: archi-crab
-  namespace: archi-crab-gw
-  # MCP holds long-lived streaming connections. Default route timeouts drop SSE
-  # mid-session, and tools/list still passes -- so it hides from smoke tests.
-  timeout: 3600s
+# ---------------------------------------------------------------------------
+# Cedar. ONE policy over the aggregated tool surface -- the vMCP dividend.
+#
+# ROLLOUT: shadow the apps' OPERATOR_USERNAMES first, watch for divergence for
+# a week, only then empty those env vars. Cedar denies BEFORE the backend is
+# reached, so a policy bug looks like a broken tool, not a denied one.
+# ---------------------------------------------------------------------------
+authz:
+  enabled: false                    # enable only after the claims check
+  policies: |
+    permit(principal, action == Action::"list_tools", resource);
+
+    permit(principal, action == Action::"call_tool", resource)
+    when { resource in [Tool::"get_task_status", Tool::"check_crab_user"] };
+
+    // mirrors CRAB_MCP_SERVER__OPERATOR_USERNAMES exactly, for the shadow period
+    permit(principal, action == Action::"call_tool", resource)
+    when {
+      resource in [Tool::"count_tasks_by_status", Tool::"tasks_by_status",
+                   Tool::"tasks_by_ddmreqid", Tool::"last_failures",
+                   Tool::"last_refused"] &&
+      principal.claim_cern_upn in ["kphornsi","crabint1","belforte","vchakrav"]
+    };
 
 redis:
   enabled: true
-  # Pin by digest before prod. A moving tag is an unreviewed code change that
-  # arrives on the next pod restart, in a component holding user tokens.
   image: redis:7-alpine
-  # Secret must pre-exist. HOLDS THE KEY TO USER TOKENS -- see README.
-  authSecret: redis-thv-auth
+  authSecret: redis-thv-auth        # holds the key to every user's CERN tokens
 
 telemetry:
   enabled: true
   endpoint: otel-collector.archi-crab.svc.cluster.local:4318
-  sampleRate: 1.0            # default is 0.05, useless on a testbed (F21)
+  sampleRate: 1.0                   # default 0.05 is useless on a testbed
 
 # ---------------------------------------------------------------------------
-# The MCP servers. `name` is the BASE name -- nameSuffix is appended, and the
-# proxy Service, OIDC config and HTTPRoute all follow. Adding a server is one
-# entry; there is no way to add one and forget its route.
+# Backends. NO host, NO route, NO public surface -- they are reached only
+# through the vMCP. Adding one costs nothing outside this list.
 # ---------------------------------------------------------------------------
 servers:
-  - name: TODO_NAME_1
-    host: crab-mcp-gateway.cern.ch
-    image: TODO_REGISTRY/TODO_IMAGE_1@sha256:TODO
-    transport: streamable-http        # stdio is single-client only
-    port: 8080
-    writablePaths: [/tmp]
-    resources:
-      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
-      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
-  - name: TODO_NAME_2
-    host: TODO_HOST_2
-    image: TODO_REGISTRY/TODO_IMAGE_2@sha256:TODO
+  - name: site-status
+    image: registry.cern.ch/cmscrab/site-status-mcp@sha256:TODO
     transport: streamable-http
-    port: 8080
+    port: 8000
+    mcpPath: /mcp
     writablePaths: [/tmp]
+    envPrefix: SITE_STATUS_MCP
+    operatorUsernames: "lhsuanch"
+    env:
+      - {name: SITE_STATUS_MCP_OPENSEARCH__BASE_URL, value: "https://monit-grafana.cern.ch/api/datasources/proxy/9475"}
+      - {name: SITE_STATUS_MCP_SERVER__LOGS_ROOT,    value: "/tmp/logs"}
+    envFromSecret:
+      - {name: SITE_STATUS_MCP_OPENSEARCH__TOKEN, secretName: monit-grafana, key: token}
     resources:
       proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
       backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
+  - name: crab
+    image: registry.cern.ch/cmscrab/crab-mcp@sha256:TODO
+    transport: streamable-http
+    port: 8000
+    mcpPath: /mcp
+    writablePaths: [/tmp]
+    envPrefix: CRAB_MCP
+    operatorUsernames: "kphornsi,crabint1,belforte,vchakrav"
+    env:
+      # PROD URL. staging values point at cmsweb-testbed, or staging exercises
+      # production CRAB with a production robot.
+      - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb.cern.ch/crabserver/prod"}
+      - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}
+      - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
+      - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-security/certificates"}
+      # Never false: it disables server-cert verification while the container
+      # holds a robot credential.
+      - {name: CRAB_MCP_CRAB__VERIFY_TLS, value: "true"}
+    secretMounts:
+      - {name: crab-robot-cert, mountPath: /data/certs, defaultMode: 0400}
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
-# ---------------------------------------------------------------------------
-# NetworkPolicy. Default-deny plus explicit allows, enforced by Cilium.
-#
-# egressCIDRs is the allowlist a compromised or prompt-injected MCP server may
-# reach. It holds a live CERN user token, so where that token can be SENT is
-# the control that matters -- not whether the container is "trusted".
-# Narrow to the CRAB endpoints and CERN SSO; do not leave it open.
-# ---------------------------------------------------------------------------
+  - name: htcondor
+    image: registry.cern.ch/cmscrab/htcondor-mcp@sha256:TODO
+    transport: streamable-http
+    port: 8003                      # NOT 8000
+    mcpPath: /mcp
+    writablePaths: [/tmp]
+    envPrefix: HTCONDOR_MCP
+    # No OIDC block in its .env.example -- confirm whether it validates tokens
+    # at all. If not, the vMCP is its only gate and it has no per-user layer.
+    env:
+      - {name: HTCONDOR_MCP_CONDOR__POOL,      value: "cmsgwms-collector-global.cern.ch:9620,cmsgwms-collector-global.fnal.gov:9620"}
+      - {name: HTCONDOR_MCP_CONDOR__TOKEN_DIR, value: "/data/certs/tokens.d"}
+      - {name: HTCONDOR_MCP_OPENSEARCH__BASE_URL, value: "https://monit-grafana.cern.ch/api/datasources/proxy/8787"}
+    envFromSecret:
+      - {name: HTCONDOR_MCP_OPENSEARCH__TOKEN, secretName: monit-grafana, key: token}
+    secretMounts:
+      - {name: htcondor-idtokens, mountPath: /data/certs/tokens.d, defaultMode: 0400}
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+
+gateway:
+  baseName: archi-crab
+  namespace: archi-crab-gw
+  timeout: 3600s
+
 networkPolicy:
   enabled: true
+  # A compromised or injected backend holds a live user token. Where it can SEND
+  # that token is the control that matters. htcondor also needs 9620 to CERN
+  # AND FNAL -- the allowlist cannot be CERN-only.
   egressCIDRs:
-    - "TODO_CRAB_REST_CIDR/32"
-    - "TODO_CERN_SSO_CIDR/32"
+    - "137.138.0.0/16"
+    - "188.184.0.0/15"

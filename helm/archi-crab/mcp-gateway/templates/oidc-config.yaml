@@ -1,20 +1,21 @@
-{{- range $srv := .Values.servers }}
----
-# Validates the JWTs TOOLHIVE issues to MCP clients.
+# Validates the token the vMCP REPLAYS to backends -- the upstream CERN token,
+# not the vMCP's own JWT. One config for all backends: they all receive a token
+# minted for the same CERN client.
 #
-# NOT CERN's issuer. In the embedded-AS model the proxy mints its own tokens;
-# CERN is upstream, configured in MCPExternalAuthConfig. Pointing this at
-# auth.cern.ch is the classic mis-wiring: 401 everywhere, nothing in the logs (F4).
-apiVersion: {{ $.Values.apiVersions.mcpOIDCConfig }}
+# NOTE the audience is cern.clientId, i.e. crab-mcp-gateway[-staging]. It is NOT
+# "crab-mcp". upstreamInject replays the token minted for the client that
+# obtained it; registering a crab-mcp app does not change the aud claim.
+apiVersion: {{ .Values.apiVersions.mcpOIDCConfig }}
 kind: MCPOIDCConfig
 metadata:
-  name: thv-issued-{{ include "mcp.serverName" (dict "srv" $srv "ctx" $) }}
-  namespace: {{ $.Values.namespace }}
+  name: {{ include "archi.name" (dict "base" "cern-replayed" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
   annotations: {argocd.argoproj.io/sync-wave: "1"}
   labels:
-{{ include "archi.labels" $ | indent 4 }}
+{{ include "archi.labels" . | indent 4 }}
 spec:
   type: inline
   inline:
-    issuer: {{ include "mcp.publicUrl" $srv | quote }}
-{{- end }}
+    issuer: {{ .Values.cern.issuer | quote }}
+    jwksUrl: {{ .Values.cern.jwksUri | quote }}
+    clientId: {{ .Values.cern.clientId | quote }}

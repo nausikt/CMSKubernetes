@@ -2,5 +2,5 @@ apiVersion: v2
 name: crab-mcp-gateway
 description: MCP servers exposed via ToolHive behind CERN SSO
 type: application
-version: 0.7.2
-appVersion: "0.7.2"
+version: 0.8.0
+appVersion: "0.8.0"

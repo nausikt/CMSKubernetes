@@ -1,45 +1,107 @@
 env: staging
 nameSuffix: "-staging"
 namespace: archi-crab-staging
-gateway:
-  baseName: archi-crab
-  namespace: archi-crab-gw
-  timeout: 3600s
+
+group:
+  name: crab
+
+vmcp:
+  name: crab-mcp-gateway
+  host: crab-mcp-gateway-staging.cern.ch
+  port: 8080
+  outgoingStrategy: upstreamInject
+  backendDiscovery: discovered
+  authServer:
+    issuer: "https://crab-mcp-gateway-staging.cern.ch"
+    signingKeySecret: {name: thv-jwt-signing, key: private-key}
+    hmacSecret:       {name: thv-hmac,        key: hmac-key}
+    tokenLifespans:
+      accessTokenLifespan: 1h
+      refreshTokenLifespan: 168h
+      authCodeLifespan: 10m
+
+cern:
+  issuer: "https://auth.cern.ch/auth/realms/cern"
+  jwksUri: "https://auth.cern.ch/auth/realms/cern/protocol/openid-connect/certs"
+  # Staging's own CERN client. Its name is the audience the backend apps
+  # validate, so staging tokens are rejected by prod backends and vice versa.
+  clientId: "crab-mcp-gateway-staging"
+  clientSecret: {secretName: toolhive-idp-secret, key: client-secret}
+  scopes: [openid, profile, email]
+
+authz:
+  enabled: false
+
 telemetry:
   enabled: true
   endpoint: otel-collector-staging.archi-crab-staging.svc.cluster.local:4318
   sampleRate: 1.0
+
+gateway:
+  baseName: archi-crab
+  namespace: archi-crab-gw
+  timeout: 3600s
+
 servers:
-  - name: TODO_NAME_1
-    host: crab-mcp-gateway-staging.cern.ch
-    image: TODO_REGISTRY/TODO_IMAGE_1@sha256:TODO
+  - name: site-status
+    image: registry.cern.ch/cmscrab/site-status-mcp@sha256:TODO
     transport: streamable-http
-    port: 8080
+    port: 8000
+    mcpPath: /mcp
     writablePaths: [/tmp]
-    resources:
-      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
-      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
-  - name: TODO_NAME_2
-    host: TODO_HOST_2_STAGING
-    image: TODO_REGISTRY/TODO_IMAGE_2@sha256:TODO
-    transport: streamable-http
-    port: 8080
-    writablePaths: [/tmp]
+    envPrefix: SITE_STATUS_MCP
+    operatorUsernames: "lhsuanch"
+    env:
+      - {name: SITE_STATUS_MCP_OPENSEARCH__BASE_URL, value: "https://monit-grafana.cern.ch/api/datasources/proxy/9475"}
+      - {name: SITE_STATUS_MCP_SERVER__LOGS_ROOT,    value: "/tmp/logs"}
+    envFromSecret:
+      - {name: SITE_STATUS_MCP_OPENSEARCH__TOKEN, secretName: monit-grafana, key: token}
     resources:
       proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
       backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
+  - name: crab
+    image: registry.cern.ch/cmscrab/crab-mcp@sha256:TODO
+    transport: streamable-http
+    port: 8000
+    mcpPath: /mcp
+    writablePaths: [/tmp]
+    envPrefix: CRAB_MCP
+    operatorUsernames: "kphornsi,crabint1,belforte,vchakrav"
+    env:
+      # TESTBED, not prod -- see the note in values.yaml
+      - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb-testbed.cern.ch/crabserver/preprod"}
+      - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}
+      - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
+      - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-security/certificates"}
+      - {name: CRAB_MCP_CRAB__VERIFY_TLS, value: "true"}
+    secretMounts:
+      - {name: crab-robot-cert, mountPath: /data/certs, defaultMode: 0400}
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
-# ---------------------------------------------------------------------------
-# NetworkPolicy. Default-deny plus explicit allows, enforced by Cilium.
-#
-# egressCIDRs is the allowlist a compromised or prompt-injected MCP server may
-# reach. It holds a live CERN user token, so where that token can be SENT is
-# the control that matters -- not whether the container is "trusted".
-# Narrow to the CRAB endpoints and CERN SSO; do not leave it open.
-# ---------------------------------------------------------------------------
+  - name: htcondor
+    image: registry.cern.ch/cmscrab/htcondor-mcp@sha256:TODO
+    transport: streamable-http
+    port: 8003
+    mcpPath: /mcp
+    writablePaths: [/tmp]
+    envPrefix: HTCONDOR_MCP
+    env:
+      - {name: HTCONDOR_MCP_CONDOR__POOL,      value: "cmsgwms-collector-global.cern.ch:9620,cmsgwms-collector-global.fnal.gov:9620"}
+      - {name: HTCONDOR_MCP_CONDOR__TOKEN_DIR, value: "/data/certs/tokens.d"}
+      - {name: HTCONDOR_MCP_OPENSEARCH__BASE_URL, value: "https://monit-grafana.cern.ch/api/datasources/proxy/8787"}
+    envFromSecret:
+      - {name: HTCONDOR_MCP_OPENSEARCH__TOKEN, secretName: monit-grafana, key: token}
+    secretMounts:
+      - {name: htcondor-idtokens, mountPath: /data/certs/tokens.d, defaultMode: 0400}
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+
 networkPolicy:
   enabled: true
   egressCIDRs:
-    - "TODO_CRAB_REST_CIDR/32"
-    - "TODO_CERN_SSO_CIDR/32"
+    - "137.138.0.0/16"
+    - "188.184.0.0/15"

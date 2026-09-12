@@ -1,5 +1,8 @@
 {{- range $srv := .Values.servers }}
 ---
+# Backend. NO host, NO HTTPRoute, NO public surface -- reached only via the vMCP.
+# Still validates the replayed CERN token: defence in depth, and the app does
+# its own validation on top.
 apiVersion: {{ $.Values.apiVersions.mcpServer }}
 kind: MCPServer
 metadata:
@@ -8,22 +11,23 @@ metadata:
   annotations: {argocd.argoproj.io/sync-wave: "2"}
   labels:
 {{ include "archi.labels" $ | indent 4 }}
+    # Group membership is how the vMCP discovers this backend.
+    toolhive.stacklok.dev/group: {{ include "archi.name" (dict "base" $.Values.group.name "ctx" $) }}
 spec:
+  groupRef:
+    name: {{ include "archi.name" (dict "base" $.Values.group.name "ctx" $) }}
+
   image: {{ $srv.image }}
   transport: {{ $srv.transport | default "streamable-http" }}
-  mcpPort: {{ $srv.port | default 8080 }}
-  proxyPort: {{ $srv.port | default 8080 }}
+  mcpPort: {{ $srv.port }}
+  proxyPort: {{ $srv.port }}
 
-  # Validates the ToolHive-issued JWT the client presents.
+  # Validates the token the vMCP replays -- the CERN one.
   oidcConfigRef:
-    name: thv-issued-{{ include "mcp.serverName" (dict "srv" $srv "ctx" $) }}
+    name: {{ include "archi.name" (dict "base" "cern-replayed" "ctx" $) }}
 
-  # Runs the CERN SSO flow and injects the user's upstream token downstream.
-  authServerRef:
-    name: {{ include "archi.name" (dict "base" "cern-embedded-auth" "ctx" $) }}
-
-  # TLS terminates at the Gateway. Without this the proxy advertises internal
-  # hostnames / http:// in its OAuth discovery document (F11).
+  # TLS terminates at the Gateway; without this the proxy advertises internal
+  # hostnames in its OAuth discovery document.
   trustProxyHeaders: true
 
 {{- if $.Values.telemetry.enabled }}
@@ -39,18 +43,52 @@ spec:
     spec:
       containers:
         - name: mcp                      # this name is MANDATORY
+          env:
+            # Explicit, not .env. Deny-by-default on the three debug switches:
+            # DISABLE_BEARER_AUTH=true is an open gateway BEHIND the proxy's
+            # 401, and it destroys identity as well as authorization.
+            - {name: {{ $srv.envPrefix }}_SERVER__HOST,      value: "0.0.0.0"}
+            - {name: {{ $srv.envPrefix }}_SERVER__PORT,      value: {{ $srv.port | quote }}}
+            - {name: {{ $srv.envPrefix }}_SERVER__PATH,      value: {{ $srv.mcpPath | quote }}}
+            - {name: {{ $srv.envPrefix }}_SERVER__LOG_LEVEL, value: "INFO"}
+            - {name: {{ $srv.envPrefix }}_SERVER__DEBUG_TOOLS,         value: "false"}
+            - {name: {{ $srv.envPrefix }}_SERVER__DISABLE_BEARER_AUTH, value: "false"}
+{{- if $srv.operatorUsernames }}
+            # Keep populated while Cedar shadows it. Empty only after a week
+            # with no divergence.
+            - {name: {{ $srv.envPrefix }}_SERVER__OPERATOR_USERNAMES, value: {{ $srv.operatorUsernames | quote }}}
+{{- end }}
+            - {name: {{ $srv.envPrefix }}_OIDC__ISSUER,   value: {{ $.Values.cern.issuer | quote }}}
+            - {name: {{ $srv.envPrefix }}_OIDC__JWKS_URI, value: {{ $.Values.cern.jwksUri | quote }}}
+            # The REPLAYED token's audience: the vMCP's CERN client, per env.
+            - {name: {{ $srv.envPrefix }}_OIDC__AUDIENCE, value: {{ $.Values.cern.clientId | quote }}}
+            - {name: {{ $srv.envPrefix }}_OIDC__ALGORITHM,       value: "RS256"}
+            - {name: {{ $srv.envPrefix }}_OIDC__USERNAME_CLAIMS, value: "cern_upn,preferred_username,sub"}
+{{- range $srv.env }}
+            - {name: {{ .name }}, value: {{ .value | quote }}}
+{{- end }}
+{{- range $srv.envFromSecret }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef: {name: {{ .secretName }}, key: {{ .key }}}
+{{- end }}
           resources:
 {{ toYaml $srv.resources.backend | indent 12 }}
-{{- if $srv.writablePaths }}
           volumeMounts:
 {{- range $i, $p := $srv.writablePaths }}
-            - name: scratch-{{ $i }}
-              mountPath: {{ $p }}
+            - {name: scratch-{{ $i }}, mountPath: {{ $p }}}
+{{- end }}
+{{- range $srv.secretMounts }}
+            - {name: {{ .name }}, mountPath: {{ .mountPath }}, readOnly: true}
 {{- end }}
       volumes:
 {{- range $i, $p := $srv.writablePaths }}
-        - name: scratch-{{ $i }}
-          emptyDir: {}
+        - {name: scratch-{{ $i }}, emptyDir: {}}
 {{- end }}
+{{- range $srv.secretMounts }}
+        # 0400 replaces compose's user:"0:0" + 0600 host file: in k8s the
+        # container runs as its own UID and still reads the credential.
+        - name: {{ .name }}
+          secret: {secretName: {{ .name }}, defaultMode: {{ .defaultMode }}}
 {{- end }}
 {{- end }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: archi-crab-vault
+description: VaultStaticSecrets pulling ARCHI-CRAB secrets from CERN Vault via VSO
+type: application
+version: 0.8.0
+appVersion: "0.8.0"

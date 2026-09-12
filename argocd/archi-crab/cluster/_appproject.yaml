@@ -26,6 +26,7 @@ spec:
     - {server: https://kubernetes.default.svc, namespace: archi-crab-gw}
     - {server: https://kubernetes.default.svc, namespace: toolhive-system}
     - {server: https://kubernetes.default.svc, namespace: argocd}
+    - {server: https://kubernetes.default.svc, namespace: vault-secrets-operator}
   # Cluster-scoped kinds we may create. Anything absent here is REFUSED --
   # notably ClusterRoleBinding, which is how an Application would escalate.
   clusterResourceWhitelist:
@@ -36,4 +37,7 @@ spec:
     - {group: admissionregistration.k8s.io, kind: ValidatingWebhookConfiguration}
     - {group: admissionregistration.k8s.io, kind: MutatingWebhookConfiguration}
     - {group: gateway.networking.k8s.io, kind: GatewayClass}
-  namespaceResourceBlacklist: []
+  namespaceResourceBlacklist:
+    # Nothing in this stack needs to mint tokens or bind cluster roles inside
+    # a namespace; blocking them removes an escalation path from a bad merge.
+    - {group: "", kind: ServiceAccount}

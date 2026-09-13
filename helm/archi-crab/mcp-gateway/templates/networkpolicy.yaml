@@ -33,6 +33,26 @@ spec:
     - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
       ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
 ---
+# The proxy-runner creates the backend StatefulSet through the Kubernetes API.
+# Without this it fails "can't determine api server type: timed out" after 60s,
+# the startup probe kills it at 90s, and the operator waits forever for a
+# workload that is never created. Nothing in ToolHive's docs mentions this.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "archi.name" (dict "base" "allow-apiserver" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock: {cidr: {{ .Values.networkPolicy.apiServerCIDR | quote }}}
+      ports: [{protocol: TCP, port: {{ .Values.networkPolicy.apiServerPort }}}]
+---
 {{- if .Values.redis.enabled }}
 # Redis: reachable ONLY from ToolHive proxy pods in this namespace.
 apiVersion: networking.k8s.io/v1

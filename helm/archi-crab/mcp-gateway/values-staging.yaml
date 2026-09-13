@@ -114,3 +114,6 @@ networkPolicy:
   egressCIDRs:
     - "137.138.0.0/16"
     - "188.184.0.0/15"
+  # From: kubectl -n default get endpoints kubernetes
+  apiServerCIDR: "188.184.91.154/32"
+  apiServerPort: 6443

@@ -33,11 +33,17 @@ spec:
 {{- end }}
   outgoingAuth:
     source: {{ .Values.vmcp.backendDiscovery }}
-    # `default` omitted: with incomingAuth oidc the client's CERN token reaches
-    # the backends unchanged. Setting default.type: discovered makes the vMCP
-    # resolve each backend's auth config as an MCPExternalAuthConfig, using the
-    # name from oidcConfigRef -- which is a different kind, so it 404s and the
-    # vMCP goes Failed. Operator 0.47.0.
+{{- if .Values.vmcp.backends }}
+    # Explicit override. `discovered` alone writes a backends map claiming
+    # type: externalAuthConfigRef with the name taken from each backend's
+    # oidcConfigRef -- a different kind, so the lookup 404s and the vMCP fails.
+    # Operator 0.47.0.
+    backends:
+{{- range .Values.vmcp.backends }}
+      {{ include "archi.name" (dict "base" . "ctx" $) }}:
+        type: discovered
+{{- end }}
+{{- end }}
 
 {{- if eq .Values.vmcp.incomingAuthType "local" }}
   authServerConfig:

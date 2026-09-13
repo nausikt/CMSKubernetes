@@ -8,12 +8,28 @@ group:
 vmcp:
   name: crab-mcp-gateway
   host: crab-mcp-gateway-staging.cern.ch
-  port: 8080
+  port: 8080                     # vMCP Service port the HTTPRoute targets
+  publicPort: 31393              # NodePort: Octavia LB quota is 0, so the
+                                 # Gateway is reached via the LanDB aliases.
+                                 # Appears in resourceUrl and the CERN callback.
+
+  # enum: anonymous | oidc   ("local" is described but not implemented in 0.47.0)
   incomingAuthType: oidc
-  outgoingType: discovered
-  publicPort: 31393
+
   backendDiscovery: discovered
+
+  # BASE names -- the template applies nameSuffix. Required: without it the
+  # operator writes its own backends map declaring type: externalAuthConfigRef
+  # with the name from each MCPServer's oidcConfigRef, which is a different
+  # kind, so the lookup 404s and the vMCP goes Failed.
+  backends:
+    - crab
+    - site-status
+    # - htcondor       # deferred: htcondor-idtokens not yet available
+
   authServer:
+    # Inert while incomingAuthType is oidc. Kept so the switch is one enum value
+    # if "local" lands upstream.
     issuer: "https://crab-mcp-gateway-staging.cern.ch:31393"
     signingKeySecret: {name: thv-jwt-signing, key: private-key}
     hmacSecret:       {name: thv-hmac,        key: hmac-key}

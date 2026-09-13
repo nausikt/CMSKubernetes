@@ -44,7 +44,7 @@ gateway:
 
 servers:
   - name: site-status
-    image: registry.cern.ch/cmscrab/site-status-mcp@sha256:TODO
+    image: registry.cern.ch/cmscrab/site-status-mcp:preprod-1789131871
     transport: streamable-http
     port: 8000
     mcpPath: /mcp
@@ -61,7 +61,7 @@ servers:
       backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
   - name: crab
-    image: registry.cern.ch/cmscrab/crab-mcp@sha256:TODO
+    image: registry.cern.ch/cmscrab/crab-mcp:preprod-1789131706
     transport: streamable-http
     port: 8000
     mcpPath: /mcp
@@ -81,24 +81,27 @@ servers:
       proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
       backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
-  - name: htcondor
-    image: registry.cern.ch/cmscrab/htcondor-mcp@sha256:TODO
-    transport: streamable-http
-    port: 8003
-    mcpPath: /mcp
-    writablePaths: [/tmp]
-    envPrefix: HTCONDOR_MCP
-    env:
-      - {name: HTCONDOR_MCP_CONDOR__POOL,      value: "cmsgwms-collector-global.cern.ch:9620,cmsgwms-collector-global.fnal.gov:9620"}
-      - {name: HTCONDOR_MCP_CONDOR__TOKEN_DIR, value: "/data/certs/tokens.d"}
-      - {name: HTCONDOR_MCP_OPENSEARCH__BASE_URL, value: "https://monit-grafana.cern.ch/api/datasources/proxy/8787"}
-    envFromSecret:
-      - {name: HTCONDOR_MCP_OPENSEARCH__TOKEN, secretName: monit-grafana, key: token}
-    secretMounts:
-      - {name: htcondor-idtokens, mountPath: /data/certs/tokens.d, defaultMode: 0400}
-    resources:
-      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
-      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+  # DEFERRED: htcondor-idtokens secret not yet available (/data/certs/tokens.d).
+  # Re-enable with the secret. Needs egress 9620 to CERN *and* FNAL when
+  # NetworkPolicy is turned on, and has no OIDC block of its own (F60).
+  # - name: htcondor
+  #   image: registry.cern.ch/cmscrab/htcondor-mcp:preprod-1789132354
+  #   transport: streamable-http
+  #   port: 8003
+  #   mcpPath: /mcp
+  #   writablePaths: [/tmp]
+  #   envPrefix: HTCONDOR_MCP
+  #   env:
+  #     - {name: HTCONDOR_MCP_CONDOR__POOL,      value: "cmsgwms-collector-global.cern.ch:9620,cmsgwms-collector-global.fnal.gov:9620"}
+  #     - {name: HTCONDOR_MCP_CONDOR__TOKEN_DIR, value: "/data/certs/tokens.d"}
+  #     - {name: HTCONDOR_MCP_OPENSEARCH__BASE_URL, value: "https://monit-grafana.cern.ch/api/datasources/proxy/8787"}
+  #   envFromSecret:
+  #     - {name: HTCONDOR_MCP_OPENSEARCH__TOKEN, secretName: monit-grafana, key: token}
+  #   secretMounts:
+  #     - {name: htcondor-idtokens, mountPath: /data/certs/tokens.d, defaultMode: 0400}
+  #   resources:
+  #     proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+  #     backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
 networkPolicy:
   enabled: true

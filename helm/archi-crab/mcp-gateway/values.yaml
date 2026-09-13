@@ -45,7 +45,7 @@ vmcp:
   incomingAuthType: oidc
   # Replay the stored CERN token to each backend, so every backend app keeps
   # validating iss=auth.cern.ch and aud=<the upstream clientId below>.
-  outgoingType: pass_through     # verify the enum, below
+  outgoingType: discovered
   publicPort: 31393
   backendDiscovery: discovered      # runtime via K8s API; `inline` = smaller
                                     # attack surface, but edit+restart per backend

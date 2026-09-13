@@ -10,7 +10,7 @@ vmcp:
   host: crab-mcp-gateway-staging.cern.ch
   port: 8080
   incomingAuthType: oidc
-  outgoingType: pass_through     # verify the enum, below
+  outgoingType: discovered
   publicPort: 31393
   backendDiscovery: discovered
   authServer:

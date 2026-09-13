@@ -16,21 +16,27 @@ spec:
   groupRef:
     name: {{ include "archi.name" (dict "base" .Values.group.name "ctx" $) }}
 
-  # ToolHive runs its own OAuth 2.1 authorization server with the issuer and
-  # signing keys in authServerConfig below. NOT "oidc" -- that would have
-  # clients present CERN tokens directly and lose DCR and per-server audiences.
-  # NEVER "anonymous".
   incomingAuth:
-    type: local
+    type: {{ .Values.vmcp.incomingAuthType }}
+{{- if eq .Values.vmcp.incomingAuthType "oidc" }}
+    # Validates the CERN token the client presents. Same issuer and audience the
+    # backends validate -- with type: oidc it is literally the same token.
+    oidc:
+      issuer: {{ .Values.cern.issuer | quote }}
+      audience: {{ .Values.cern.clientId | quote }}
+      jwksUrl: {{ .Values.cern.jwksUri | quote }}
+      # Advertised as the protected resource. Carries the NodePort, or clients
+      # are pointed at an address that does not answer.
+      resourceUrl: "https://{{ .Values.vmcp.host }}:{{ .Values.vmcp.publicPort }}/mcp"
+{{- end }}
 
   outgoingAuth:
-    # discovered: backends found at runtime via the K8s API -- adding one needs
-    # no vMCP change. `inline` has a smaller attack surface but must be edited
-    # and restarted per backend.
     source: {{ .Values.vmcp.backendDiscovery }}
-    # Replay the stored CERN token downstream, so backend apps keep validating
-    # iss=auth.cern.ch and aud={{ .Values.cern.clientId }} exactly as they do today.
-    defaultStrategy: {{ .Values.vmcp.outgoingStrategy }}
+    # enum: pass_through | token_exchange | service_account | discovered
+    # pass_through -- the client's CERN token reaches each backend unchanged,
+    # which is exactly what their OIDC config expects.
+    default:
+      type: {{ .Values.vmcp.outgoingType }}
 
   authServerConfig:
     issuer: {{ .Values.vmcp.authServer.issuer | quote }}

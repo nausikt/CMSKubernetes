@@ -42,9 +42,11 @@ vmcp:
   host: crab-mcp-gateway.cern.ch
   port: 8080
 
+  incomingAuthType: oidc
   # Replay the stored CERN token to each backend, so every backend app keeps
   # validating iss=auth.cern.ch and aud=<the upstream clientId below>.
-  outgoingStrategy: upstreamInject
+  outgoingType: pass_through     # verify the enum, below
+  publicPort: 31393
   backendDiscovery: discovered      # runtime via K8s API; `inline` = smaller
                                     # attack surface, but edit+restart per backend
 

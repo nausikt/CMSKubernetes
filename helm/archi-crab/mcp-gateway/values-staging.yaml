@@ -9,7 +9,9 @@ vmcp:
   name: crab-mcp-gateway
   host: crab-mcp-gateway-staging.cern.ch
   port: 8080
-  outgoingStrategy: upstreamInject
+  incomingAuthType: oidc
+  outgoingType: pass_through     # verify the enum, below
+  publicPort: 31393
   backendDiscovery: discovered
   authServer:
     issuer: "https://crab-mcp-gateway-staging.cern.ch:31393"

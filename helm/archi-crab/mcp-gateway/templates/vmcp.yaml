@@ -31,14 +31,13 @@ spec:
       # pointed at an address that does not answer.
       resourceUrl: "https://{{ .Values.vmcp.host }}:{{ .Values.vmcp.publicPort }}/mcp"
 {{- end }}
-
   outgoingAuth:
     source: {{ .Values.vmcp.backendDiscovery }}
-    # enum: pass_through | token_exchange | service_account | discovered
-    # pass_through -- the client's CERN token reaches each backend unchanged,
-    # which is exactly what their OIDC config expects.
-    default:
-      type: {{ .Values.vmcp.outgoingType }}
+    # `default` omitted: with incomingAuth oidc the client's CERN token reaches
+    # the backends unchanged. Setting default.type: discovered makes the vMCP
+    # resolve each backend's auth config as an MCPExternalAuthConfig, using the
+    # name from oidcConfigRef -- which is a different kind, so it 404s and the
+    # vMCP goes Failed. Operator 0.47.0.
 
 {{- if eq .Values.vmcp.incomingAuthType "local" }}
   authServerConfig:

@@ -25,10 +25,10 @@ obsNamespace: archi-crab-obs
 #   kubectl api-resources --api-group=toolhive.stacklok.dev -o wide
 apiVersions:
   mcpServer: toolhive.stacklok.dev/v1beta1
-  mcpGroup: toolhive.stacklok.dev/v1alpha1
-  virtualMCPServer: toolhive.stacklok.dev/v1alpha1
+  mcpGroup: toolhive.stacklok.dev/v1beta1
+  virtualMCPServer: toolhive.stacklok.dev/v1beta1
   mcpOIDCConfig: toolhive.stacklok.dev/v1beta1
-  mcpTelemetryConfig: toolhive.stacklok.dev/v1alpha1
+  mcpTelemetryConfig: toolhive.stacklok.dev/v1beta1
 
 group:
   name: crab

@@ -140,10 +140,16 @@ servers:
       - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb.cern.ch/crabserver/prod"}
       - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}
       - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
-      - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-security/certificates"}
+      - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/cvmfs/grid.cern.ch/etc/grid-security/certificates"}
       # Never false: it disables server-cert verification while the container
       # holds a robot credential.
       - {name: CRAB_MCP_CRAB__VERIFY_TLS, value: "true"}
+    cvmfs:
+      enabled: true
+      claimName: cvmfs-grid
+      mountPath: /cvmfs
+      storageClass: cvmfs
+      waitForMount: false
     secretMounts:
       - {name: crab-robot-cert, mountPath: /data/certs, defaultMode: 0400}
     resources:

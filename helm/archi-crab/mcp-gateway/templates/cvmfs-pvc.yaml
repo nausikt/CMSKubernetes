@@ -1,0 +1,35 @@
+{{- /*
+CVMFS PVCs for backends that need them, deduplicated by claimName so several
+servers can share one mount.
+
+WHY: crab-mcp calls cmsweb over mTLS and cmsweb is signed by the IGTF / Grid CA.
+The slim Python image ships only public roots, so the app dies at import with
+  FileNotFoundError: CRAB_MCP_CRAB__CA_BUNDLE does not exist
+On the Puppet hosts /etc/grid-security/certificates was bind-mounted; nothing
+provides it in the cluster. CVMFS over a ConfigMap because the bundle is
+hundreds of files, past the 1 MiB limit, and CVMFS tracks CA updates itself.
+*/}}
+{{- $seen := dict }}
+{{- range $srv := .Values.servers }}
+{{- if and $srv.cvmfs $srv.cvmfs.enabled }}
+{{- $claim := $srv.cvmfs.claimName | default "cvmfs-grid" }}
+{{- if not (hasKey $seen $claim) }}
+{{- $_ := set $seen $claim true }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "archi.name" (dict "base" $claim "ctx" $) }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  accessModes: [ReadOnlyMany]
+  storageClassName: {{ $srv.cvmfs.storageClass | default "cvmfs" }}
+  resources:
+    requests:
+      storage: 1Gi      # CVMFS ignores this; the API requires it
+{{- end }}
+{{- end }}
+{{- end }}

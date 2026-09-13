@@ -44,15 +44,17 @@ data:
 
     service:
       pipelines:
+{{- if .Values.langfuse.enabled }}
         traces:
           receivers: [otlp]
           processors: [batch, resource]
-          exporters: [{{ if .Values.langfuse.enabled }}otlphttp/langfuse{{ end }}]
+          exporters: [otlphttp/langfuse]
+        logs:
+          receivers: [otlp]
+          processors: [batch, resource{{ if .Values.redactAttributes }}, attributes/redact{{ end }}]
+          exporters: [otlphttp/langfuse]
+{{- end }}
         metrics:
           receivers: [otlp]
           processors: [batch, resource]
           exporters: [prometheus]
-        logs:
-          receivers: [otlp]
-          processors: [batch, resource{{ if .Values.redactAttributes }}, attributes/redact{{ end }}]
-          exporters: [{{ if .Values.langfuse.enabled }}otlphttp/langfuse{{ end }}]

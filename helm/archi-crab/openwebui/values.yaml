@@ -9,7 +9,10 @@ namespace: archi-crab
 
 enabled: true
 image: ghcr.io/open-webui/open-webui:main
-host: archi-crab.cern.ch
+
+# ⚠ NodePort until Octavia quota lands. WEBUI_URL and the CERN callback both
+#   derive from this, so the port has to be here, not appended later.
+host: archi-crab.cern.ch:31393
 
 gateway:
   # The ONE shared Gateway, in the shared edge namespace.
@@ -21,9 +24,15 @@ litellm:
   baseName: litellm            # resolved with nameSuffix in-namespace
   secretName: litellm-keys
 
-# Same CERN Application Portal registration as the MCP servers -- add the
-# OpenWebUI redirect URI to the EXISTING client, do not register a second one.
+# OpenWebUI has its OWN CERN client, separate from ToolHive's
+# (crab-mcp-gateway[-staging]). Four confidential clients, two per environment.
+# The three MCP backends have NO client and NO secret -- they verify JWT
+# signatures against the public JWKS, and AUDIENCE is another client's name
+# used as an expected claim value, not a credential.
+#
+# Register this callback at the Application Portal, WITH the port:
+#   https://archi-crab.cern.ch:31393/oauth/oidc/callback
 oidc:
   issuer: https://auth.cern.ch/auth/realms/cern
-  clientId: TODO_CERN_CLIENT_ID
-  secretName: cern-idp-secret
+  clientId: archi-crab-production
+  secretName: openwebui-idp-secret

@@ -1,9 +1,17 @@
 env: staging
 nameSuffix: "-staging"
 namespace: archi-crab-staging
-host: archi-crab-staging.cern.ch
+
+# ⚠ NodePort until Octavia quota lands.
+host: archi-crab-staging.cern.ch:31393
+
 gateway:
   baseName: archi-crab
   namespace: archi-crab-gw
   timeout: 3600s
 
+# Only what differs from values.yaml -- Helm deep-merges the rest, so issuer
+# and secretName are inherited. Callback to register:
+#   https://archi-crab-staging.cern.ch:31393/oauth/oidc/callback
+oidc:
+  clientId: archi-crab-staging

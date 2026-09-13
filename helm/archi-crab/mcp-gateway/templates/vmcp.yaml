@@ -19,14 +19,16 @@ spec:
   incomingAuth:
     type: {{ .Values.vmcp.incomingAuthType }}
 {{- if eq .Values.vmcp.incomingAuthType "oidc" }}
-    # Validates the CERN token the client presents. Same issuer and audience the
-    # backends validate -- with type: oidc it is literally the same token.
-    oidc:
-      issuer: {{ .Values.cern.issuer | quote }}
+    # A REFERENCE to an MCPOIDCConfig -- the CEL rule requires it when type is
+    # oidc, and inline settings are rejected. cern-replayed-staging already
+    # validates this exact token: iss=auth.cern.ch, aud=crab-mcp-gateway-staging.
+    oidcConfigRef:
+      name: {{ include "archi.name" (dict "base" "cern-replayed" "ctx" $) }}
+      # Required by the CRD. The client presents a CERN token minted for the
+      # vMCP's upstream client, so aud = cern.clientId.
       audience: {{ .Values.cern.clientId | quote }}
-      jwksUrl: {{ .Values.cern.jwksUri | quote }}
-      # Advertised as the protected resource. Carries the NodePort, or clients
-      # are pointed at an address that does not answer.
+      # Advertised in OAuth discovery. Carries the NodePort, or clients are
+      # pointed at an address that does not answer.
       resourceUrl: "https://{{ .Values.vmcp.host }}:{{ .Values.vmcp.publicPort }}/mcp"
 {{- end }}
 
@@ -38,6 +40,7 @@ spec:
     default:
       type: {{ .Values.vmcp.outgoingType }}
 
+{{- if eq .Values.vmcp.incomingAuthType "local" }}
   authServerConfig:
     issuer: {{ .Values.vmcp.authServer.issuer | quote }}
     # BOTH refs required in practice. Signing keys sign the JWTs; HMAC secrets
@@ -64,6 +67,7 @@ spec:
             name: {{ .Values.cern.clientSecret.secretName }}
             key: {{ .Values.cern.clientSecret.key }}
           scopes: {{ .Values.cern.scopes | toJson }}
+{{- end }}
 
 {{- if .Values.authz.enabled }}
   authzConfigRef:

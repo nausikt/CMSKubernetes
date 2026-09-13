@@ -18,8 +18,11 @@ spec:
     - {{ .Values.vmcp.host | quote }}
   rules:
     - backendRefs:
-        - name: {{ $n }}
-          port: {{ .Values.vmcp.port }}
+        # The operator prefixes the Service with "vmcp-" and assigns its own
+        # port -- neither matches the CR name or spec.port. Confirm with:
+        #   kubectl -n <ns> get svc | grep vmcp
+        - name: vmcp-{{ $n }}
+          port: {{ .Values.vmcp.servicePort }}
       # MCP holds long-lived streaming connections. The default timeout drops
       # SSE mid-session and tools/list still passes, so it hides from smoke tests.
       timeouts:

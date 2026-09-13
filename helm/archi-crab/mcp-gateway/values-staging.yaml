@@ -8,6 +8,9 @@ group:
 vmcp:
   name: crab-mcp-gateway
   host: crab-mcp-gateway-staging.cern.ch
+  servicePort: 4483              # the port the operator actually gives the
+                                 # vmcp- Service. NOT spec.port. Verify per env:
+                                 #   kubectl -n <ns> get svc | grep vmcp
   port: 8080                     # vMCP Service port the HTTPRoute targets
   publicPort: 31393              # NodePort: Octavia LB quota is 0, so the
                                  # Gateway is reached via the LanDB aliases.

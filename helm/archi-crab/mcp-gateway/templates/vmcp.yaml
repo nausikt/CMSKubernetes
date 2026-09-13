@@ -16,6 +16,9 @@ spec:
   groupRef:
     name: {{ include "archi.name" (dict "base" .Values.group.name "ctx" $) }}
 
+  incomingAuth:
+    type: authServer          # confirm the enum: kubectl explain virtualmcpserver.spec.incomingAuth.type
+
   outgoingAuth:
     # discovered: backends found at runtime via the K8s API -- adding one needs
     # no vMCP change. `inline` has a smaller attack surface but must be edited
@@ -45,7 +48,7 @@ spec:
       - name: cern
         type: oidc
         oidcConfig:
-          issuer: {{ .Values.cern.issuer | quote }}
+          issuerUrl: {{ .Values.cern.issuer | quote }}
           clientId: {{ .Values.cern.clientId | quote }}
           clientSecretRef:
             name: {{ .Values.cern.clientSecret.secretName }}

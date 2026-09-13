@@ -178,7 +178,7 @@ gateway:
   timeout: 3600s
 
 networkPolicy:
-  enabled: true
+  enabled: false
   # A compromised or injected backend holds a live user token. Where it can SEND
   # that token is the control that matters. htcondor also needs 9620 to CERN
   # AND FNAL -- the allowlist cannot be CERN-only.

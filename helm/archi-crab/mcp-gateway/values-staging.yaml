@@ -104,7 +104,7 @@ servers:
   #     backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
 networkPolicy:
-  enabled: true
+  enabled: false
   egressCIDRs:
     - "137.138.0.0/16"
     - "188.184.0.0/15"

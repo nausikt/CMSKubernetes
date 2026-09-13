@@ -12,7 +12,7 @@ vmcp:
   outgoingStrategy: upstreamInject
   backendDiscovery: discovered
   authServer:
-    issuer: "https://crab-mcp-gateway-staging.cern.ch"
+    issuer: "https://crab-mcp-gateway-staging.cern.ch:31393"
     signingKeySecret: {name: thv-jwt-signing, key: private-key}
     hmacSecret:       {name: thv-hmac,        key: hmac-key}
     tokenLifespans:

@@ -50,7 +50,7 @@ vmcp:
 
   authServer:
     # ToolHive becomes an OIDC issuer at this URL.
-    issuer: "https://crab-mcp-gateway.cern.ch"
+    issuer: "https://crab-mcp-gateway.cern.ch:31393"
     # BOTH refs are required in practice. Omit either and ToolHive generates
     # EPHEMERAL keys: every pod restart invalidates all tokens and forces every
     # user to re-authenticate. Tested by the restart check in the runbook.

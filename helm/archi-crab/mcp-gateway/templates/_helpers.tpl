@@ -27,7 +27,3 @@ archi-crab.cern.ch/env: {{ .Values.env }}
 {{- printf "mcp-%s%s-proxy" .srv.name (.ctx.Values.nameSuffix | default "") -}}
 {{- end -}}
 
-{{/* Public URL, derived ONCE. Consumed by both the HTTPRoute and the OIDC
-     issuer, so a hostname change cannot desynchronise OAuth discovery from
-     what is actually served. */}}
-{{- define "mcp.publicUrl" -}}https://{{ .host }}{{- end -}}

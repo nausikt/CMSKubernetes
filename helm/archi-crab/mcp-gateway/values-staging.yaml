@@ -69,20 +69,14 @@ servers:
     envPrefix: CRAB_MCP
     operatorUsernames: "kphornsi,crabint1,belforte,vchakrav"
     env:
-      # TESTBED, not prod -- see the note in values.yaml
       - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb-testbed.cern.ch/crabserver/preprod"}
       - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}
       - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
-      - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/cvmfs/grid.cern.ch/etc/grid-security/certificates"}
+      - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-certs/igtf.pem"}
       - {name: CRAB_MCP_CRAB__VERIFY_TLS, value: "true"}
     secretMounts:
-      - {name: crab-robot-cert, mountPath: /data/certs, defaultMode: 0400}
-    cvmfs:
-      enabled: true
-      claimName: cvmfs-grid
-      mountPath: /cvmfs
-      storageClass: cvmfs
-      waitForMount: false
+      - {name: crab-robot-cert, mountPath: /data/certs,    defaultMode: 0400}
+      - {name: igtf-bundle,     mountPath: /etc/grid-certs, defaultMode: 0444}
     resources:
       proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
       backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}

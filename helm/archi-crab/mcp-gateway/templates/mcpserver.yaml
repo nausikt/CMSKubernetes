@@ -45,31 +45,6 @@ spec:
 
   podTemplateSpec:
     spec:
-{{- if and $srv.cvmfs $srv.cvmfs.enabled $srv.cvmfs.waitForMount }}
-      # CVMFS automounts on first access. If the backend starts before the
-      # repo is warm, crab_tls_ssl_context raises FileNotFoundError at import
-      # and the pod crashloops until a restart happens to land after the mount
-      # -- which reads as flakiness, not a config error.
-      initContainers:
-        - name: wait-cvmfs
-          image: busybox
-          command:
-            - sh
-            - -c
-            - |
-              P={{ $srv.cvmfs.mountPath | default "/cvmfs" }}/grid.cern.ch/etc/grid-security/certificates
-              n=0
-              until [ -d "$P" ] && [ "$(ls "$P" | wc -l)" -gt 10 ]; do
-                n=$((n+1)); [ $n -gt 60 ] && { echo "cvmfs not ready after 180s"; exit 1; }
-                echo "waiting for cvmfs at $P"; sleep 3
-              done
-          securityContext:                                        # ← here
-{{ include "archi.containerSecurityContext" $ | indent 12 }}
-          volumeMounts:
-            - name: cvmfs
-              mountPath: {{ $srv.cvmfs.mountPath | default "/cvmfs" }}
-              readOnly: true
-{{- end }}
       containers:
         - name: mcp
           env:
@@ -110,11 +85,6 @@ spec:
 {{- range $srv.secretMounts }}
             - {name: {{ .name }}, mountPath: {{ .mountPath }}, readOnly: true}
 {{- end }}
-{{- if and $srv.cvmfs $srv.cvmfs.enabled }}
-            - name: cvmfs
-              mountPath: {{ $srv.cvmfs.mountPath | default "/cvmfs" }}
-              readOnly: true
-{{- end }}
       volumes:
 {{- range $i, $p := $srv.writablePaths }}
         - {name: scratch-{{ $i }}, emptyDir: {}}
@@ -124,11 +94,5 @@ spec:
         # container runs as its own UID and still reads the credential.
         - name: {{ .name }}
           secret: {secretName: {{ .name }}, defaultMode: {{ .defaultMode }}}
-{{- end }}
-{{- if and $srv.cvmfs $srv.cvmfs.enabled }}
-        - name: cvmfs
-          persistentVolumeClaim:
-            claimName: {{ include "archi.name" (dict "base" ($srv.cvmfs.claimName | default "cvmfs-grid") "ctx" $) }}
-            readOnly: true
 {{- end }}
 {{- end }}

@@ -16,8 +16,12 @@ spec:
   groupRef:
     name: {{ include "archi.name" (dict "base" .Values.group.name "ctx" $) }}
 
+  # ToolHive runs its own OAuth 2.1 authorization server with the issuer and
+  # signing keys in authServerConfig below. NOT "oidc" -- that would have
+  # clients present CERN tokens directly and lose DCR and per-server audiences.
+  # NEVER "anonymous".
   incomingAuth:
-    type: authServer          # confirm the enum: kubectl explain virtualmcpserver.spec.incomingAuth.type
+    type: local
 
   outgoingAuth:
     # discovered: backends found at runtime via the K8s API -- adding one needs

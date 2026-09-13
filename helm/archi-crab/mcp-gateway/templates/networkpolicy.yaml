@@ -71,7 +71,7 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: mcp-gateway
+              toolhive: "true"
       ports: [{protocol: TCP, port: 6379}]
 ---
 {{- end }}
@@ -85,7 +85,11 @@ metadata:
   annotations: {argocd.argoproj.io/sync-wave: "-1"}
 spec:
   podSelector:
-    matchLabels: {app.kubernetes.io/component: mcp-gateway}
+    matchLabels:
+      # ToolHive's own label. app.kubernetes.io/component is on the MCPServer
+      # CR, NOT on the proxy or backend pods -- selecting on it matches nothing,
+      # so under default-deny the proxies get DNS and apiserver only.
+      toolhive: "true"
   policyTypes: [Ingress]
   ingress:
     - {}     # TODO tighten once the Envoy source identity is confirmed (Phase 9.2)
@@ -101,7 +105,11 @@ metadata:
   annotations: {argocd.argoproj.io/sync-wave: "-1"}
 spec:
   podSelector:
-    matchLabels: {app.kubernetes.io/component: mcp-gateway}
+    matchLabels:
+      # ToolHive's own label. app.kubernetes.io/component is on the MCPServer
+      # CR, NOT on the proxy or backend pods -- selecting on it matches nothing,
+      # so under default-deny the proxies get DNS and apiserver only.
+      toolhive: "true"
   policyTypes: [Egress]
   egress:
     # in-namespace: Redis, collector

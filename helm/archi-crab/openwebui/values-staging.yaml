@@ -3,7 +3,7 @@ nameSuffix: "-staging"
 namespace: archi-crab-staging
 
 # ⚠ NodePort until Octavia quota lands.
-host: archi-crab-staging.cern.ch:31393
+host: archi-crab-staging.cern.ch
 
 gateway:
   baseName: archi-crab

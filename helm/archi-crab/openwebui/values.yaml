@@ -12,7 +12,7 @@ image: ghcr.io/open-webui/open-webui:main
 
 # ⚠ NodePort until Octavia quota lands. WEBUI_URL and the CERN callback both
 #   derive from this, so the port has to be here, not appended later.
-host: archi-crab.cern.ch:31393
+host: archi-crab.cern.ch
 
 gateway:
   # The ONE shared Gateway, in the shared edge namespace.

@@ -39,17 +39,28 @@ spec:
             - name: OAUTH_CLIENT_SECRET
               valueFrom:
                 secretKeyRef: {name: {{ .Values.oidc.secretName }}, key: client-secret}
-            - {name: WEBUI_URL, value: "https://{{ .Values.host }}"}
+            - {name: WEBUI_URL, value: {{ .Values.publicUrl | quote }}}
+            # Supplied, not generated. OpenWebUI writes one to .webui_secret_key
+            # at startup, which fails on a read-only rootfs -- and would mint a
+            # new key on every restart, invalidating every session.
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef: {name: openwebui-secret, key: WEBUI_SECRET_KEY}
             - {name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment={{ .Values.env }}"}
           ports: [{containerPort: 8080}]
           volumeMounts:
-            # readOnlyRootFilesystem: true needs writable scratch
-            - {name: scratch, mountPath: /app/backend/data}
+            # readOnlyRootFilesystem: true, and OpenWebUI writes its SQLite DB,
+            # uploads and .webui_secret_key here.
+            - {name: data, mountPath: /app/backend/data}
           resources:
             requests: {cpu: 100m, memory: 512Mi}
             limits:   {cpu: 1, memory: 2Gi}
       volumes:
-        - {name: scratch, emptyDir: {}}
+        # emptyDir: chat history and settings vanish on every restart. Fine for
+        # proving login works; switch to a PVC (cinder) before anyone relies on
+        # it. WEBUI_SECRET_KEY comes from a Secret so sessions survive restarts
+        # regardless.
+        - {name: data, emptyDir: {}}
 ---
 apiVersion: v1
 kind: Service

@@ -53,6 +53,7 @@ backendAuth:
 vmcp:
   name: crab-mcp-gateway
   host: crab-mcp-gateway.cern.ch
+  publicUrl: https://archi-crab.cern.ch:31393
   servicePort: 4483              # the port the operator actually gives the
                                  # vmcp- Service. NOT spec.port. Verify per env:
                                  #   kubectl -n <ns> get svc | grep vmcp

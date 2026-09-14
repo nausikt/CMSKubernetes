@@ -164,7 +164,7 @@ servers:
     envPrefix: CRAB_MCP
     operatorUsernames: "kphornsi,crabint1,belforte,vchakrav"
     env:
-      - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb-testbed.cern.ch/crabserver/preprod"}
+      - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb.cern.ch/crabserver/prod"}
       - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}
       - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
       - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-certs/igtf.pem"}

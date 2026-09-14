@@ -103,7 +103,11 @@ servers:
     mcpPath: /mcp
     writablePaths: [/tmp]
     envPrefix: CRAB_MCP
-    operatorUsernames: "kphornsi,crabint1,belforte,vchakrav"
+    # ⚠ "demo" is here ONLY because disableBearerAuth is true in staging --
+    # every caller resolves to demo, so this grants operator-tier tools to
+    # anyone who reaches the gateway. Remove it with the disable flag when
+    # tokenExchange lands.
+    operatorUsernames: "kphornsi,crabint1,belforte,vchakrav,demo"
     # ⚠ TEMPORARY, STAGING ONLY. The vMCP in operator 0.47.0 cannot forward the
     # user's token, so crab-mcp rejects every call. This turns off its bearer
     # check -- and with it every per-user control: owner checks pass for

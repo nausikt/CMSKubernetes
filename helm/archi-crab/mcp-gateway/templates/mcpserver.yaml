@@ -55,7 +55,10 @@ spec:
             - {name: {{ $srv.envPrefix }}_SERVER__PATH,      value: {{ $srv.mcpPath | quote }}}
             - {name: {{ $srv.envPrefix }}_SERVER__LOG_LEVEL, value: "INFO"}
             - {name: {{ $srv.envPrefix }}_SERVER__DEBUG_TOOLS,         value: "false"}
-            - {name: {{ $srv.envPrefix }}_SERVER__DISABLE_BEARER_AUTH, value: "false"}
+            # Deny-by-default. TRUE destroys identity, not just authorization:
+            # current_username() returns DEMO_USERNAME, so per-task owner
+            # checks and OPERATOR_USERNAMES both stop working (F57).
+            - {name: {{ $srv.envPrefix }}_SERVER__DISABLE_BEARER_AUTH, value: {{ $srv.disableBearerAuth | default false | quote }}}
 {{- if $srv.operatorUsernames }}
             # Keep populated while Cedar shadows it. Empty only after a week
             # with no divergence.

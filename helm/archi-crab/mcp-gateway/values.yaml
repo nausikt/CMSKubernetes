@@ -75,13 +75,16 @@ vmcp:
       authCodeLifespan: 10m
 
 cern:
-  issuer: "https://auth.cern.ch/auth/realms/cern"
+  issuer:  "https://auth.cern.ch/auth/realms/cern"
   jwksUri: "https://auth.cern.ch/auth/realms/cern/protocol/openid-connect/certs"
-  # The CERN SSO client the vMCP uses upstream. Its name IS the audience the
-  # backend apps validate on the replayed token -- keep them in step.
-  clientId: "crab-mcp-gateway"
-  clientSecret: {secretName: toolhive-idp-secret, key: client-secret}
+  # The PUBLIC client desktop MCP clients authenticate with. Its own ID is the
+  # audience: CERN mints aud=<clientId>, and the vMCP plus every backend
+  # validate exactly that. One value, one audience, whole chain consistent.
+  clientId: "crab-mcp-gateway-public"
   scopes: [openid, profile, email]
+  # Kept for the confidential client, unused while incomingAuth is oidc and
+  # authServer.enabled is false. Preserved so switching back is one value.
+  clientSecret: {secretName: toolhive-idp-secret, key: client-secret}
 
 # ---------------------------------------------------------------------------
 # Cedar. ONE policy over the aggregated tool surface -- the vMCP dividend.

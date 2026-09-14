@@ -42,13 +42,16 @@ vmcp:
       authCodeLifespan: 10m
 
 cern:
-  issuer: "https://auth.cern.ch/auth/realms/cern"
+  issuer:  "https://auth.cern.ch/auth/realms/cern"
   jwksUri: "https://auth.cern.ch/auth/realms/cern/protocol/openid-connect/certs"
-  # Staging's own CERN client. Its name is the audience the backend apps
-  # validate, so staging tokens are rejected by prod backends and vice versa.
-  clientId: "crab-mcp-gateway-staging"
-  clientSecret: {secretName: toolhive-idp-secret, key: client-secret}
+  # The PUBLIC client desktop MCP clients authenticate with. Its own ID is the
+  # audience: CERN mints aud=<clientId>, and the vMCP plus every backend
+  # validate exactly that. One value, one audience, whole chain consistent.
+  clientId: "crab-mcp-gateway-public-staging"
   scopes: [openid, profile, email]
+  # Kept for the confidential client, unused while incomingAuth is oidc and
+  # authServer.enabled is false. Preserved so switching back is one value.
+  clientSecret: {secretName: toolhive-idp-secret, key: client-secret}
 
 authz:
   enabled: false

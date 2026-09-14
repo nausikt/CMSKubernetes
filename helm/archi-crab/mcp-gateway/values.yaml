@@ -37,6 +37,19 @@ group:
 # The vMCP: the only public surface. One hostname, one CERN client, one
 # redirect URI, one Cedar policy.
 # ---------------------------------------------------------------------------
+
+backendAuth:
+  # FALSE deliberately. The vMCP cannot authenticate to backends that enforce
+  # their own OIDC: its health checks and capability aggregation carry no user
+  # token, backends answer 401 "authorization header required", and every
+  # session collapses with "no backends returned capabilities".
+  #
+  # So the vMCP is the ONLY gate, and NetworkPolicy is what keeps anything
+  # else in the cluster from reaching the backend proxies directly. That makes
+  # the policy load-bearing rather than defence in depth -- it is currently
+  # DISABLED and must be re-enabled before this carries users.
+  enabled: false
+
 vmcp:
   name: crab-mcp-gateway
   host: crab-mcp-gateway.cern.ch

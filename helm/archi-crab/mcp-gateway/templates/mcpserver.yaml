@@ -23,12 +23,11 @@ spec:
   proxyPort: {{ $srv.port }}
 
   # Validates the token the vMCP replays -- the CERN one.
+{{- if $.Values.backendAuth.enabled }}
   oidcConfigRef:
     name: {{ include "archi.name" (dict "base" "cern-replayed" "ctx" $) }}
-    # Required by the CRD. The REPLAYED CERN token was minted for the vMCP's
-    # upstream client, so aud = cern.clientId -- crab-mcp-gateway[-staging].
-    # NOT "crab-mcp": upstreamInject replays, it does not re-mint (F81).
     audience: {{ $.Values.cern.clientId | quote }}
+{{- end }}
 
   # TLS terminates at the Gateway; without this the proxy advertises internal
   # hostnames in its OAuth discovery document.

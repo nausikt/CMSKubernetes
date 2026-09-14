@@ -110,6 +110,12 @@ servers:
       - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
       - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-certs/igtf.pem"}
       - {name: CRAB_MCP_CRAB__VERIFY_TLS, value: "true"}
+      # ⚠ TEMPORARY — STAGING ONLY. Disables per-user identity entirely:
+      # current_username() returns DEMO_USERNAME, so owner checks and
+      # OPERATOR_USERNAMES gating both stop working (F57). Acceptable only
+      # while this endpoint is unreachable by anyone but us.
+      # REMOVE when tokenExchange lands. Tracked as <ticket>.
+      - {name: CRAB_MCP_SERVER__DISABLE_BEARER_AUTH, value: "true"}
     secretMounts:
       - {name: crab-robot-cert, mountPath: /data/certs,    defaultMode: 0400}
       - {name: igtf-bundle,     mountPath: /etc/grid-certs, defaultMode: 0444}

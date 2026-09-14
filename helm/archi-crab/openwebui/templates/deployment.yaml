@@ -39,6 +39,10 @@ spec:
             - name: OAUTH_CLIENT_SECRET
               valueFrom:
                 secretKeyRef: {name: {{ .Values.oidc.secretName }}, key: client-secret}
+            - {name: ENABLE_OAUTH_ROLE_MANAGEMENT, value: "true"}
+            - {name: OAUTH_ROLES_CLAIM,   value: "cern_roles"}
+            - {name: OAUTH_ALLOWED_ROLES, value: "base-user,crab-admin"}
+            - {name: OAUTH_ADMIN_ROLES,   value: "crab-admin"}
             - {name: WEBUI_URL, value: {{ .Values.publicUrl | quote }}}
             # Supplied, not generated. OpenWebUI writes one to .webui_secret_key
             # at startup, which fails on a read-only rootfs -- and would mint a

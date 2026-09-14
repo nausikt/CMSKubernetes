@@ -52,6 +52,9 @@ spec:
             # readOnlyRootFilesystem: true, and OpenWebUI writes its SQLite DB,
             # uploads and .webui_secret_key here.
             - {name: data, mountPath: /app/backend/data}
+            # Python's tempfile needs a writable /tmp -- torch/dill import
+            # fails at startup without it.
+            - {name: tmp, mountPath: /tmp}
           resources:
             requests: {cpu: 100m, memory: 512Mi}
             limits:   {cpu: 1, memory: 2Gi}
@@ -61,6 +64,7 @@ spec:
         # it. WEBUI_SECRET_KEY comes from a Secret so sessions survive restarts
         # regardless.
         - {name: data, emptyDir: {}}
+        - {name: tmp,  emptyDir: {}}
 ---
 apiVersion: v1
 kind: Service

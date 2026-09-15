@@ -22,6 +22,28 @@ spec:
       automountServiceAccountToken: false
       securityContext:
 {{ include "archi.podSecurityContext" . | indent 8 }}
+      initContainers:
+        # SSL_CERT_FILE REPLACES the trust store, it does not extend it. The
+        # CERN Secret alone trusts crab-mcp-webui*.cern.ch (Grid CA) but NOT
+        # auth.cern.ch (Sectigo, a public CA) -- OIDC discovery then fails with
+        # CERTIFICATE_VERIFY_FAILED and /oauth/oidc/login returns 500.
+        # So: certifi's public roots + the CERN bundle, merged at start.
+        - name: merge-ca
+          securityContext:
+{{ include "archi.containerSecurityContext" . | indent 12 }}
+          image: {{ .Values.image }}
+          command: [sh, -c]
+          args:
+            - >-
+              cat "$(python -c 'import certifi; print(certifi.where())')"
+              /etc/ssl/cern/ca.crt > /etc/ssl/merged/ca-bundle.crt
+              && echo "merged $(grep -c 'BEGIN CERT' /etc/ssl/merged/ca-bundle.crt) certs"
+          volumeMounts:
+            - {name: cern-ca,   mountPath: /etc/ssl/cern, readOnly: true}
+            - {name: merged-ca, mountPath: /etc/ssl/merged}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits:   {cpu: 200m, memory: 128Mi}
       containers:
         - name: openwebui
           securityContext:
@@ -53,8 +75,10 @@ spec:
               valueFrom:
                 secretKeyRef: {name: openwebui-secret, key: WEBUI_SECRET_KEY}
             - {name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment={{ .Values.env }}"}
-            - {name: REQUESTS_CA_BUNDLE, value: /etc/ssl/cern/ca.crt}
-            - {name: SSL_CERT_FILE,      value: /etc/ssl/cern/ca.crt}
+            # Public roots + CERN CA (built by merge-ca initContainer). Pointing
+            # these at the CERN-only Secret breaks every publicly-signed host.
+            - {name: REQUESTS_CA_BUNDLE, value: /etc/ssl/merged/ca-bundle.crt}
+            - {name: SSL_CERT_FILE,      value: /etc/ssl/merged/ca-bundle.crt}
           ports: [{containerPort: 8080}]
           volumeMounts:
             # readOnlyRootFilesystem: true, and OpenWebUI writes its SQLite DB,
@@ -63,7 +87,7 @@ spec:
             # Python's tempfile needs a writable /tmp -- torch/dill import
             # fails at startup without it.
             - {name: tmp, mountPath: /tmp}
-            - {name: cern-ca, mountPath: /etc/ssl/cern, readOnly: true}
+            - {name: merged-ca, mountPath: /etc/ssl/merged, readOnly: true}
           resources:
             requests: {cpu: 100m, memory: 512Mi}
             limits:   {cpu: 1, memory: 2Gi}
@@ -78,6 +102,7 @@ spec:
         - {name: tmp,  emptyDir: {}}
         - name: cern-ca
           secret: {secretName: cern-ca-bundle}
+        - {name: merged-ca, emptyDir: {sizeLimit: 2Mi}}
 ---
 apiVersion: v1
 kind: Service

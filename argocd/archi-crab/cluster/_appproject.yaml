@@ -37,7 +37,8 @@ spec:
     - {group: admissionregistration.k8s.io, kind: ValidatingWebhookConfiguration}
     - {group: admissionregistration.k8s.io, kind: MutatingWebhookConfiguration}
     - {group: gateway.networking.k8s.io, kind: GatewayClass}
-  namespaceResourceBlacklist:
-    # Nothing in this stack needs to mint tokens or bind cluster roles inside
-    # a namespace; blocking them removes an escalation path from a bad merge.
-    - {group: "", kind: ServiceAccount}
+  namespaceResourceBlacklist: []
+    # ServiceAccount was blocked here to prevent escalation, but ToolHive's
+    # operator chart ships one (toolhive-operator in toolhive-system) and the
+    # Deployment spec.serviceAccountName references it. A bare SA is inert --
+    # the ClusterRoleBinding that gives it power is already whitelisted above.

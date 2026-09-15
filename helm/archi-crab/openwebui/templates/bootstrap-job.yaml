@@ -17,7 +17,7 @@ spec:
   backoffLimit: 3
   template:
     spec:
-      restartPolicy: Never
+      restartPolicy: OnFailure
       automountServiceAccountToken: false
       securityContext:
 {{ include "archi.podSecurityContext" . | indent 8 }}
@@ -51,7 +51,7 @@ spec:
   backoffLimit: 3
   template:
     spec:
-      restartPolicy: Never
+      restartPolicy: OnFailure
       automountServiceAccountToken: false
       securityContext:
 {{ include "archi.podSecurityContext" . | indent 8 }}

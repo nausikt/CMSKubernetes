@@ -57,6 +57,7 @@ toolServers:
     # resolved (second vMCP, or a shared client). Registering anyway proves
     # the bootstrap path works and survives restarts.
     auth_type: "system_oauth"
+    key: null
     config: {}
     info:
       id: crab-mcp-gateway

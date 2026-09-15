@@ -42,6 +42,12 @@ toolServers:
     # resolved (second vMCP, or a shared client). Registering anyway proves
     # the bootstrap path works and survives restarts.
     auth_type: "system_oauth"
+    # Required by the model (key: str | None has NO default, so it must be
+    # present even when null). Only read when auth_type is "bearer".
+    key: null
+    # MUST be {} not null: main.py does c.get('config', {}), which returns
+    # None for an explicit null and then crashes on `'access_control' in None`
+    # at startup -- a registration that bricks the app.
     config: {}
     info:
       id: crab-mcp-gateway

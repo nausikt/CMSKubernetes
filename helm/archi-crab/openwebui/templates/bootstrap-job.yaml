@@ -1,0 +1,84 @@
+{{- if and .Values.enabled .Values.bootstrap.enabled }}
+{{- $n := include "archi.name" (dict "base" "openwebui" "ctx" $) }}
+# PreSync: creates OpenWebUI's FIRST account, which becomes admin
+# automatically. Only works before any account exists, so it must run before
+# OAuth signups are possible. Idempotent -- signup on an existing email
+# returns 400, which the script verifies is "already registered" by signing
+# in, rather than assuming.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $n }}-bootstrap-admin
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+{{ include "archi.podSecurityContext" . | indent 8 }}
+      containers:
+        - name: bootstrap-admin
+          image: python:3.12-alpine
+          securityContext:
+{{ include "archi.containerSecurityContext" . | indent 12 }}
+          env:
+            - {name: WEBUI_BASE_URL, value: "http://{{ $n }}.{{ .Values.namespace }}.svc.cluster.local:8080"}
+            - name: ADMIN_EMAIL
+              valueFrom: {secretKeyRef: {name: openwebui-admin, key: email}}
+            - name: ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: openwebui-admin, key: password}}
+          command: ["python3", "/scripts/create-admin.py"]
+          volumeMounts: [{name: scripts, mountPath: /scripts, readOnly: true}]
+      volumes:
+        - name: scripts
+          configMap: {name: {{ $n }}-bootstrap, defaultMode: 0555}
+---
+# PostSync: OpenWebUI must already be running. Reconciles tool servers.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $n }}-bootstrap-tools
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+{{ include "archi.podSecurityContext" . | indent 8 }}
+      containers:
+        - name: bootstrap-tools
+          image: python:3.12-alpine
+          securityContext:
+{{ include "archi.containerSecurityContext" . | indent 12 }}
+          env:
+            - {name: WEBUI_BASE_URL, value: "http://{{ $n }}.{{ .Values.namespace }}.svc.cluster.local:8080"}
+            - name: ADMIN_EMAIL
+              valueFrom: {secretKeyRef: {name: openwebui-admin, key: email}}
+            - name: ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: openwebui-admin, key: password}}
+            - {name: TOOL_SERVERS_JSON, value: {{ .Values.toolServers | toJson | quote }}}
+          command: ["python3", "/scripts/register-tools.py"]
+          volumeMounts: [{name: scripts, mountPath: /scripts, readOnly: true}]
+      volumes:
+        - name: scripts
+          configMap: {name: {{ $n }}-bootstrap, defaultMode: 0555}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $n }}-bootstrap
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-2"}
+data:
+{{ (.Files.Glob "scripts/*.py").AsConfig | indent 2 }}
+{{- end }}

@@ -1,0 +1,20 @@
+{{- if and .Values.enabled .Values.persistence.enabled }}
+{{- $n := include "archi.name" (dict "base" "openwebui" "ctx" $) }}
+# Without this the bootstrap Jobs below have nothing to reconcile against --
+# every restart loses the admin account AND the registered tool servers, and
+# both hooks re-run their full setup every time a pod happens to restart.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $n }}-data
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-2"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+{{- end }}

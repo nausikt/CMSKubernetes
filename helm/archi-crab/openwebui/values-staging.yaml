@@ -19,3 +19,17 @@ oidc:
 # WEBUI_URL and the CERN callback carry the NodePort; `host` above stays bare
 # because Gateway API rejects host:port in an HTTPRoute hostname.
 publicUrl: https://archi-crab-staging.cern.ch:31393
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: cinder-standard
+
+bootstrap:
+  enabled: true
+
+toolServers:
+  - id: crab-mcp-gateway
+    type: mcp
+    url: "https://crab-mcp-gateway-staging.cern.ch:31393/mcp"
+    enabled: true

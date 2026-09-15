@@ -69,7 +69,9 @@ spec:
         # proving login works; switch to a PVC (cinder) before anyone relies on
         # it. WEBUI_SECRET_KEY comes from a Secret so sessions survive restarts
         # regardless.
-        - {name: data, emptyDir: {}}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $n }}-data
         - {name: tmp,  emptyDir: {}}
 ---
 apiVersion: v1

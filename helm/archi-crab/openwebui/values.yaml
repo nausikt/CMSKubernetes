@@ -38,3 +38,17 @@ oidc:
   secretName: openwebui-idp-secret
 
 publicUrl: https://archi-crab.cern.ch:31393
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: cinder-standard
+
+bootstrap:
+  enabled: true
+
+toolServers:
+  - id: crab-mcp-gateway
+    type: mcp
+    url: "https://crab-mcp-gateway.cern.ch:31393/mcp"
+    enabled: true

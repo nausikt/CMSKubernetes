@@ -53,6 +53,8 @@ spec:
               valueFrom:
                 secretKeyRef: {name: openwebui-secret, key: WEBUI_SECRET_KEY}
             - {name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment={{ .Values.env }}"}
+            - {name: REQUESTS_CA_BUNDLE, value: /etc/ssl/cern/ca.crt}
+            - {name: SSL_CERT_FILE,      value: /etc/ssl/cern/ca.crt}
           ports: [{containerPort: 8080}]
           volumeMounts:
             # readOnlyRootFilesystem: true, and OpenWebUI writes its SQLite DB,
@@ -61,6 +63,7 @@ spec:
             # Python's tempfile needs a writable /tmp -- torch/dill import
             # fails at startup without it.
             - {name: tmp, mountPath: /tmp}
+            - {name: cern-ca, mountPath: /etc/ssl/cern, readOnly: true}
           resources:
             requests: {cpu: 100m, memory: 512Mi}
             limits:   {cpu: 1, memory: 2Gi}
@@ -73,6 +76,8 @@ spec:
           persistentVolumeClaim:
             claimName: {{ $n }}-data
         - {name: tmp,  emptyDir: {}}
+        - name: cern-ca
+          secret: {secretName: cern-ca-bundle}
 ---
 apiVersion: v1
 kind: Service

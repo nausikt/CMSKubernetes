@@ -15,6 +15,10 @@ gateway:
 #   https://archi-crab-staging.cern.ch:31393/oauth/oidc/callback
 oidc:
   clientId: archi-crab-staging
+  # The SAME client the vMCP validates. OpenWebUI forwards this token verbatim
+  # (auth_type: system_oauth -- it never performs RFC 8693, verified in
+  # routers/configs.py), and oidcConfigRef.audience is a single string by
+  # design: "MUST be unique per server to prevent token replay attacks."
 
 # WEBUI_URL and the CERN callback carry the NodePort; `host` above stays bare
 # because Gateway API rejects host:port in an HTTPRoute hostname.
@@ -29,7 +33,13 @@ bootstrap:
   enabled: true
 
 toolServers:
-  - id: crab-mcp-gateway
-    type: mcp
-    url: "https://crab-mcp-gateway-staging.cern.ch:31393/mcp"
-    enabled: true
+  - url: "https://crab-mcp-gateway-staging.cern.ch:31393"
+    path: "/mcp"
+    type: "mcp"
+    auth_type: "none"       # or whatever OAuth requires -- see the audience note below
+    headers: null
+    key: null
+    config: null
+    info:
+      id: crab-mcp-gateway
+      enabled: true

@@ -48,7 +48,13 @@ bootstrap:
   enabled: true
 
 toolServers:
-  - id: crab-mcp-gateway
-    type: mcp
-    url: "https://crab-mcp-gateway.cern.ch:31393/mcp"
-    enabled: true
+  - url: "https://crab-mcp-gateway.cern.ch:31393"
+    path: "/mcp"
+    type: "mcp"
+    auth_type: "none"       # or whatever OAuth requires -- see the audience note below
+    headers: null
+    key: null
+    config: null
+    info:
+      id: crab-mcp-gateway
+      enabled: true

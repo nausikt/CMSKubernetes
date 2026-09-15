@@ -44,16 +44,11 @@ def signup():
             return
     except urllib.error.HTTPError as e:
         body = e.read().decode(errors="replace")
-        if e.code == 400:
-            # OpenWebUI returns 400 for "email already registered" as well as
-            # other validation errors. Confirm it's the former by attempting
-            # a signin -- a real validation error should NOT be treated as
-            # already-bootstrapped.
+        if e.code in (400, 403):
             if signin_works():
                 print("admin account already exists, signin verified -- ok")
                 return
-            print(f"signup 400 and signin failed, not already-bootstrapped: {body}",
-                  file=sys.stderr)
+            print(f"signup {e.code} and signin failed: {body}", file=sys.stderr)
             sys.exit(1)
         print(f"signup failed: {e.code} {body}", file=sys.stderr)
         sys.exit(1)

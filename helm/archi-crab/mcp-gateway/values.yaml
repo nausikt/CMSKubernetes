@@ -72,9 +72,6 @@ vmcps:
 vmcp:
   servicePort: 4483              # the port the operator gives vmcp-<name>.
                                  # NOT spec.port. Verify: kubectl get svc | grep vmcp
-  publicPort: 31393              # NodePort: Octavia LB quota is 0, so the
-                                 # Gateway is reached via the LanDB aliases.
-                                 # Appears in resourceUrl and every CERN callback.
   # BASE names -- the template applies nameSuffix. Required: without it the
   # operator writes its own backends map declaring type: externalAuthConfigRef
   # with the name from each MCPServer's oidcConfigRef, which is a different

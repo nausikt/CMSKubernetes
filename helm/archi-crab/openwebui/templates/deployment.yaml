@@ -45,7 +45,7 @@ spec:
             - {name: OAUTH_ALLOWED_ROLES, value: "base-user,crab-admin"}
             - {name: OAUTH_ADMIN_ROLES,   value: "crab-admin"}
             - {name: DEFAULT_MODELS, value: "gpt-5-luna"}
-            - {name: WEBUI_URL, value: {{ .Values.publicUrl | quote }}}
+            - {name: WEBUI_URL, value: "https://{{ .Values.host }}"}
             # Supplied, not generated. OpenWebUI writes one to .webui_secret_key
             # at startup, which fails on a read-only rootfs -- and would mint a
             # new key on every restart, invalidating every session.

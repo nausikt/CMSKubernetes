@@ -45,9 +45,9 @@ spec:
       # same CERN realm for both; only the audience differs, and it is set here.
       name: {{ include "archi.name" (dict "base" (printf "cern-%s" $v.name) "ctx" $) }}
       audience: {{ $v.audience | quote }}
-      # Advertised in OAuth discovery. Carries the NodePort, or clients are
-      # pointed at an address that does not answer.
-      resourceUrl: "https://{{ $v.host }}:{{ $.Values.vmcp.publicPort }}/mcp"
+      # Advertised in OAuth discovery. Bare :443 via the Octavia LB -- a port
+      # here would point clients at an address that no longer answers.
+      resourceUrl: "https://{{ $v.host }}/mcp"
 
   outgoingAuth:
     source: discovered

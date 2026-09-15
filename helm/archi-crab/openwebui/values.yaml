@@ -10,8 +10,8 @@ namespace: archi-crab
 enabled: true
 image: ghcr.io/open-webui/open-webui:main
 
-# ⚠ NodePort until Octavia quota lands. WEBUI_URL and the CERN callback both
-#   derive from this, so the port has to be here, not appended later.
+# The public hostname. WEBUI_URL, the HTTPRoute and the CERN callback all
+# derive from this single value.
 host: archi-crab.cern.ch
 
 gateway:
@@ -30,14 +30,14 @@ litellm:
 # signatures against the public JWKS, and AUDIENCE is another client's name
 # used as an expected claim value, not a credential.
 #
-# Register this callback at the Application Portal, WITH the port:
-#   https://archi-crab.cern.ch:31393/oauth/oidc/callback
+# Register this callback at the Application Portal (no port -- Octavia LB
+# serves plain :443):
+#   https://archi-crab.cern.ch/oauth/oidc/callback
 oidc:
   issuer: https://auth.cern.ch/auth/realms/cern
   clientId: archi-crab-production
   secretName: openwebui-idp-secret
 
-publicUrl: https://archi-crab.cern.ch:31393
 
 persistence:
   enabled: true
@@ -56,7 +56,7 @@ toolServers:
   # Field shape is ToolServerConnection (routers/configs.py). key and config
   # have no default and must be PRESENT; config MUST be {} not null, or
   # OpenWebUI crashes at startup on `'access_control' in None`.
-  - url: "https://crab-mcp-webui.cern.ch:31393"
+  - url: "https://crab-mcp-webui.cern.ch"
     path: "/mcp"
     type: "mcp"
     auth_type: "system_oauth"

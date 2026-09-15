@@ -2,7 +2,6 @@ env: staging
 nameSuffix: "-staging"
 namespace: archi-crab-staging
 
-# ⚠ NodePort until Octavia quota lands.
 host: archi-crab-staging.cern.ch
 
 gateway:
@@ -12,13 +11,10 @@ gateway:
 
 # Only what differs from values.yaml -- Helm deep-merges the rest, so issuer
 # and secretName are inherited. Callback to register:
-#   https://archi-crab-staging.cern.ch:31393/oauth/oidc/callback
+#   https://archi-crab-staging.cern.ch/oauth/oidc/callback
 oidc:
   clientId: archi-crab-staging
 
-# WEBUI_URL and the CERN callback carry the NodePort; `host` above stays bare
-# because Gateway API rejects host:port in an HTTPRoute hostname.
-publicUrl: https://archi-crab-staging.cern.ch:31393
 
 persistence:
   enabled: true
@@ -37,7 +33,7 @@ toolServers:
   # Field shape is ToolServerConnection (routers/configs.py). key and config
   # have no default and must be PRESENT; config MUST be {} not null, or
   # OpenWebUI crashes at startup on `'access_control' in None`.
-  - url: "https://crab-mcp-webui-staging.cern.ch:31393"
+  - url: "https://crab-mcp-webui-staging.cern.ch"
     path: "/mcp"
     type: "mcp"
     auth_type: "system_oauth"

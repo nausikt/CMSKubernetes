@@ -5,18 +5,24 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "-3"
-    # NOTE: host-network mode is a CLUSTER-WIDE Cilium setting
-    # (gatewayAPI.hostNetwork.enabled in cilium-config), not a per-Gateway
-    # annotation. There is nothing to set here -- an earlier revision of this
-    # chart carried an invented `io.cilium/gateway-host-network` annotation.
-    # See cluster/CLUSTER.md for the real mechanism.
+    # Belt and braces on top of the app's prune:false: deleting this Gateway
+    # deletes the Cilium-owned LoadBalancer Service, which deletes the Octavia
+    # LB and frees the VIP every LanDB alias points at.
+    argocd.argoproj.io/sync-options: Delete=false
   labels:
     app.kubernetes.io/part-of: archi-crab
     archi-crab.cern.ch/scope: edge
 spec:
   gatewayClassName: {{ .Values.className }}
-  # NO spec.addresses. There is no VIP to pin; the address is whatever the
-  # nodes have, and LanDB already knows it.
+{{- with .Values.vip }}
+  # Pin the Octavia VIP: Cilium copies this to the Service's loadBalancerIP,
+  # so a recreate requests the same address. Verify after any change:
+  #   kubectl -n archi-crab-gw get svc cilium-gateway-archi-crab \
+  #     -o jsonpath='{.spec.loadBalancerIP} {.status.loadBalancer.ingress[0].ip}'
+  addresses:
+    - type: IPAddress
+      value: {{ . | quote }}
+{{- end }}
   listeners:
 {{- range $i, $l := .Values.listeners }}
     - name: https-{{ $i }}
@@ -26,7 +32,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          # Resolved in THIS namespace. All five certs live here.
+          # Resolved in THIS namespace. All the host certs live here.
           - kind: Secret
             name: {{ $l.tlsSecret }}
       allowedRoutes:

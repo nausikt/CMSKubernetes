@@ -1,20 +1,27 @@
 # =============================================================================
 # THE SINGLE GATEWAY.
 #
-# WHY ONE, not one per environment:
-# LanDB round-robin aliases point every hostname at the SAME three worker node
-# IPs. Cilium's Gateway therefore binds the HOST network on :443, and only one
-# Gateway can hold that port per node. There is no VIP to pin and no Octavia LB.
+# WHY ONE, not one per environment: every hostname is a LanDB alias on the SAME
+# Octavia load balancer VIP, and one Gateway holds all the listeners behind it.
 #
 # ISOLATION IS PRESERVED PER LISTENER, not per Gateway. Each listener carries
 # its own allowedRoutes selector, so a staging namespace cannot attach a route
 # to a prod hostname even though both listeners live on one Gateway.
 #
-# ⚠ TWO CLUSTER-LEVEL PREREQUISITES, both in cluster/CLUSTER.md:
-#     1. gateway-api-hostnetwork-enabled: "true"   (done)
-#     2. NET_BIND_SERVICE on the cilium agent AND cilium-envoy, plus
-#        keepCapNetBindService: true.  443 is a PRIVILEGED PORT: without this
-#        the Gateway comes up and the listener silently never binds.
+# HOW TRAFFIC ARRIVES (since 2026-09-15):
+#   LanDB alias -> Octavia VIP 188.184.44.137 -> node:31393 (pool members)
+#   -> cilium-gateway-archi-crab Service (type LoadBalancer, created by
+#   Cilium, NOT by this chart) -> Envoy.
+#   The NodePort is internal plumbing between Octavia and the Service; no
+#   client ever uses it and no URL carries it.
+#   * DNS lives as `landb-alias` tags ON THE LOAD BALANCER, not on servers.
+#   * host-network mode and the NET_BIND_SERVICE patches are RETIRED --
+#     gateway-api-hostnetwork-enabled is "false" again and Envoy binds
+#     unprivileged ports in-pod.
+#   * The LB is named kube_service_<cluster-id>_archi-crab-gw_cilium-gateway-
+#     archi-crab. Deleting the Service deletes the LB AND FREES THE VIP,
+#     which orphans every alias: hence prune:false on the Argo app and
+#     the pinned address below.
 #
 # ⚠ ALL TLS SECRETS LIVE IN THIS NAMESPACE. A listener resolves certificateRef
 #   in the GATEWAY's namespace, so all SEVEN CERN host certificates land here,
@@ -25,21 +32,12 @@ namespace: archi-crab-gw
 name: archi-crab
 className: cilium
 
-# Octavia LB quota is 0 (SNOW <ticket>). Reached via NodePort on the existing
-# LanDB aliases until that lands. PINNED: a reassigned port invalidates every
-# OAuth redirect URI and every resourceUrl.
-nodePort: 31393
+# Pin the Octavia VIP. Rendered into Gateway spec.addresses, which Cilium
+# copies to the Service's loadBalancerIP, so a Service recreate asks Octavia
+# for the SAME address instead of a random one (every LanDB alias points at
+# it). Remove this line to fall back to dynamic allocation.
+vip: "188.184.44.137"
 
-# NOTE: there is NO hostNetwork setting here.
-#
-# Which nodes bind :443 is decided cluster-wide by Cilium's
-# gatewayAPI.hostNetwork.nodes.matchLabels, not by this chart. See
-# cluster/CLUSTER.md. On this cluster the workers carry no role label, so they
-# are labelled explicitly:
-#
-#   kubectl label node <worker> archi-crab.cern.ch/edge=true
-#
-# and Cilium selects on archi-crab.cern.ch/edge: "true".
 
 # ---------------------------------------------------------------------------
 # Listeners. `env` selects which namespaces may attach:

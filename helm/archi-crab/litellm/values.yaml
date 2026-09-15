@@ -15,8 +15,21 @@ telemetry:
   # NOTE: LiteLLM's native Prometheus callback may be Enterprise-gated; sources
   # conflict (F22). The OTel path is unaffected, which is why it is primary.
 
-# Intentionally empty. Populate per environment.
-# Do NOT add a quality-escalation chain (cheap -> expensive on dissatisfaction):
-# fallbacks fire on errors, never on dissatisfaction, so a quality chain is a
-# cost spiral with no error to stop it (D-K).
-models: []
+
+models:
+  - model_name: gpt-5-luna
+    litellm_params:
+      model: openai/gpt-5
+      api_key: os.environ/OPENAI_API_KEY
+
+  # Ollama on a MIT submit node. LiteLLM talks to it as an OpenAI-compatible
+  # endpoint, so the model string keeps the openai/ prefix and api_base points
+  # at Ollama's /v1 shim. Ollama has no auth; api_key is a placeholder LiteLLM
+  # requires but Ollama ignores.
+  - model_name: qwen38-27b
+    litellm_params:
+      model: openai/qwen3.8:27B
+      api_base: http://submit76.mit.edu:7870/v1
+      api_key: "ollama"
+
+defaultModel: gpt-5-luna

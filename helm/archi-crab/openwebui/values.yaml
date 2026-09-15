@@ -36,3 +36,5 @@ oidc:
   issuer: https://auth.cern.ch/auth/realms/cern
   clientId: archi-crab-production
   secretName: openwebui-idp-secret
+
+publicUrl: https://archi-crab.cern.ch:31393

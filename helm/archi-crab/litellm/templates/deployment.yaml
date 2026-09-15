@@ -56,6 +56,9 @@ spec:
               value: "http://{{ $otel }}.{{ .Values.namespace }}.svc.cluster.local:4318"
 {{- end }}
             - {name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment={{ .Values.env }}"}
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef: {name: litellm-keys, key: OPENWEBUI_VIRTUAL_KEY}
           ports: [{containerPort: 4000}]
           resources:
             requests: {cpu: 100m, memory: 256Mi}

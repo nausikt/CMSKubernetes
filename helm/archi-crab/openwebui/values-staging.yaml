@@ -15,3 +15,7 @@ gateway:
 #   https://archi-crab-staging.cern.ch:31393/oauth/oidc/callback
 oidc:
   clientId: archi-crab-staging
+
+# WEBUI_URL and the CERN callback carry the NodePort; `host` above stays bare
+# because Gateway API rejects host:port in an HTTPRoute hostname.
+publicUrl: https://archi-crab-staging.cern.ch:31393

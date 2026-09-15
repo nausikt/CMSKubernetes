@@ -85,9 +85,9 @@ def main():
 
     current = existing.get("TOOL_SERVER_CONNECTIONS", [])
     by_id = {t.get("info", {}).get("id"): t for t in current if isinstance(t, dict)}
-        for spec in DESIRED:
-            by_id[spec["info"]["id"]] = spec
-        call("POST", ENDPOINT, token, {"TOOL_SERVER_CONNECTIONS": list(by_id.values())})
+    for spec in DESIRED:
+        by_id[spec["info"]["id"]] = spec
+    call("POST", ENDPOINT, token, {"TOOL_SERVER_CONNECTIONS": list(by_id.values())})
 
     print(f"reconciled {len(DESIRED)} tool server(s); "
           f"{len(by_id)} total registered")

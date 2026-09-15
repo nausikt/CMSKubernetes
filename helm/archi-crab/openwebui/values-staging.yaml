@@ -36,7 +36,12 @@ toolServers:
   - url: "https://crab-mcp-gateway-staging.cern.ch:31393"
     path: "/mcp"
     type: "mcp"
-    auth_type: "none"       # or whatever OAuth requires -- see the audience note below
+    # Forwards the user's stored CERN token verbatim. It carries
+    # aud=archi-crab-staging while the vMCP validates
+    # aud=crab-mcp-gateway-public-staging, so calls will 401 until that is
+    # resolved (second vMCP, or a shared client). Registering anyway proves
+    # the bootstrap path works and survives restarts.
+    auth_type: "system_oauth"
     headers: null
     key: null
     config: null

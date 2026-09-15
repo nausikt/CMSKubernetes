@@ -78,7 +78,10 @@ kind: ConfigMap
 metadata:
   name: {{ $n }}-bootstrap
   namespace: {{ .Values.namespace }}
-  annotations: {argocd.argoproj.io/sync-wave: "-2"}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-1"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 data:
 {{ (.Files.Glob "scripts/*.py").AsConfig | indent 2 }}
 {{- end }}

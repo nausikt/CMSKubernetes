@@ -48,14 +48,17 @@ bootstrap:
   enabled: true
 
 toolServers:
-  - url: "https://crab-mcp-gateway.cern.ch:31393"
+  # The vMCP whose audience is THIS OpenWebUI's own CERN client (archi-crab-production).
+  # auth_type: system_oauth forwards the user's login token verbatim, so it must
+  # hit the vMCP that validates that audience -- NOT crab-mcp-gateway[-staging],
+  # which validates the public client's. Both vMCPs front the same backends.
+  #
+  # Field shape is ToolServerConnection (routers/configs.py). key and config
+  # have no default and must be PRESENT; config MUST be {} not null, or
+  # OpenWebUI crashes at startup on `'access_control' in None`.
+  - url: "https://crab-mcp-webui.cern.ch:31393"
     path: "/mcp"
     type: "mcp"
-    # Forwards the user's stored CERN token verbatim. It carries
-    # aud=archi-crab-staging while the vMCP validates
-    # aud=crab-mcp-gateway-public-staging, so calls will 401 until that is
-    # resolved (second vMCP, or a shared client). Registering anyway proves
-    # the bootstrap path works and survives restarts.
     auth_type: "system_oauth"
     key: null
     config: {}

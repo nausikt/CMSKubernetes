@@ -1,74 +1,30 @@
 #!/usr/bin/env python3
-"""Create OpenWebUI's first account (auto-admin) if it doesn't exist yet.
+"""Ensure the bootstrap admin account exists.
 
-Idempotent by design: OpenWebUI's signup endpoint 400s on a duplicate email,
-which this script treats as success rather than failure. Safe to run on
-every ArgoCD PreSync.
+OpenWebUI's FIRST account becomes admin automatically. Once any account
+exists, /api/v1/auths/signup is closed and returns 403 -- so the only
+idempotent check is "can this account sign in". Signin first, signup only if
+that fails. Safe to re-run on every PostSync.
 """
-import json
-import os
 import sys
-import time
-import urllib.error
-import urllib.request
+sys.path.insert(0, "/scripts")
+from _webui import EMAIL, PASSWORD, call, die, signin, wait_for_webui  # noqa: E402
 
-BASE = os.environ["WEBUI_BASE_URL"].rstrip("/")
-EMAIL = os.environ["ADMIN_EMAIL"]
-PASSWORD = os.environ["ADMIN_PASSWORD"]
-NAME = os.environ.get("ADMIN_NAME", "bootstrap admin")
+wait_for_webui()
 
+if signin():
+    print("admin account present -- nothing to do")
+    sys.exit(0)
 
-def wait_for_webui(timeout=120):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            urllib.request.urlopen(f"{BASE}/health", timeout=5)
-            return
-        except Exception:
-            time.sleep(3)
-    print("WEBUI never became healthy", file=sys.stderr)
-    sys.exit(1)
+try:
+    call("POST", "/api/v1/auths/signup",
+         {"name": "archi-crab bootstrap admin", "email": EMAIL, "password": PASSWORD})
+except Exception:
+    die("signup refused AND signin failed: the account exists with a different "
+        "password, or signup is closed on a database with no matching account. "
+        "Either reset the openwebui-admin secret to the stored password, or "
+        "delete the PVC for a clean start.")
 
-
-def signup():
-    body = json.dumps({"name": NAME, "email": EMAIL, "password": PASSWORD}).encode()
-    req = urllib.request.Request(
-        f"{BASE}/api/v1/auths/signup",
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            print(f"admin account created: {r.status}")
-            return
-    except urllib.error.HTTPError as e:
-        body = e.read().decode(errors="replace")
-        if e.code in (400, 403):
-            if signin_works():
-                print("admin account already exists, signin verified -- ok")
-                return
-            print(f"signup {e.code} and signin failed: {body}", file=sys.stderr)
-            sys.exit(1)
-        print(f"signup failed: {e.code} {body}", file=sys.stderr)
-        sys.exit(1)
-
-
-def signin_works() -> bool:
-    body = json.dumps({"email": EMAIL, "password": PASSWORD}).encode()
-    req = urllib.request.Request(
-        f"{BASE}/api/v1/auths/signin",
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        urllib.request.urlopen(req, timeout=15)
-        return True
-    except urllib.error.HTTPError:
-        return False
-
-
-if __name__ == "__main__":
-    wait_for_webui()
-    signup()
+if not signin():
+    die("account created but signin still fails -- check ENABLE_LOGIN_FORM")
+print("admin account created")

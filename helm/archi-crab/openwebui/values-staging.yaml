@@ -15,10 +15,6 @@ gateway:
 #   https://archi-crab-staging.cern.ch:31393/oauth/oidc/callback
 oidc:
   clientId: archi-crab-staging
-  # The SAME client the vMCP validates. OpenWebUI forwards this token verbatim
-  # (auth_type: system_oauth -- it never performs RFC 8693, verified in
-  # routers/configs.py), and oidcConfigRef.audience is a single string by
-  # design: "MUST be unique per server to prevent token replay attacks."
 
 # WEBUI_URL and the CERN callback carry the NodePort; `host` above stays bare
 # because Gateway API rejects host:port in an HTTPRoute hostname.
@@ -33,21 +29,19 @@ bootstrap:
   enabled: true
 
 toolServers:
-  - url: "https://crab-mcp-gateway-staging.cern.ch:31393"
+  # The vMCP whose audience is THIS OpenWebUI's own CERN client (archi-crab-staging).
+  # auth_type: system_oauth forwards the user's login token verbatim, so it must
+  # hit the vMCP that validates that audience -- NOT crab-mcp-gateway[-staging],
+  # which validates the public client's. Both vMCPs front the same backends.
+  #
+  # Field shape is ToolServerConnection (routers/configs.py). key and config
+  # have no default and must be PRESENT; config MUST be {} not null, or
+  # OpenWebUI crashes at startup on `'access_control' in None`.
+  - url: "https://crab-mcp-webui-staging.cern.ch:31393"
     path: "/mcp"
     type: "mcp"
-    # Forwards the user's stored CERN token verbatim. It carries
-    # aud=archi-crab-staging while the vMCP validates
-    # aud=crab-mcp-gateway-public-staging, so calls will 401 until that is
-    # resolved (second vMCP, or a shared client). Registering anyway proves
-    # the bootstrap path works and survives restarts.
     auth_type: "system_oauth"
-    # Required by the model (key: str | None has NO default, so it must be
-    # present even when null). Only read when auth_type is "bearer".
     key: null
-    # MUST be {} not null: main.py does c.get('config', {}), which returns
-    # None for an explicit null and then crashes on `'access_control' in None`
-    # at startup -- a registration that bricks the app.
     config: {}
     info:
       id: crab-mcp-gateway

@@ -17,7 +17,7 @@
 #        the Gateway comes up and the listener silently never binds.
 #
 # ⚠ ALL TLS SECRETS LIVE IN THIS NAMESPACE. A listener resolves certificateRef
-#   in the GATEWAY's namespace, so all five CERN host certificates land here,
+#   in the GATEWAY's namespace, so all SEVEN CERN host certificates land here,
 #   not in the environment namespaces.
 # =============================================================================
 
@@ -54,11 +54,17 @@ listeners:
   - host: archi-crab.cern.ch
     tlsSecret: archi-crab-tls
     env: prod
+  - host: crab-mcp-webui.cern.ch            # second vMCP: OpenWebUI's audience
+    tlsSecret: crab-mcp-webui-tls
+    env: prod
   - host: crab-mcp-gateway-staging.cern.ch
     tlsSecret: crab-mcp-gateway-staging-tls
     env: staging
   - host: archi-crab-staging.cern.ch
     tlsSecret: archi-crab-staging-tls
+    env: staging
+  - host: crab-mcp-webui-staging.cern.ch    # second vMCP: OpenWebUI's audience
+    tlsSecret: crab-mcp-webui-staging-tls
     env: staging
   - host: archi-crab-testbed.cern.ch
     tlsSecret: archi-crab-testbed-tls

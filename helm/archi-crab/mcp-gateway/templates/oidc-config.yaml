@@ -1,10 +1,32 @@
-# Validates the token the vMCP REPLAYS to backends -- the upstream CERN token,
-# not the vMCP's own JWT. One config for all backends: they all receive a token
-# minted for the same CERN client.
-#
-# NOTE the audience is cern.clientId, i.e. crab-mcp-gateway[-staging]. It is NOT
-# "crab-mcp". upstreamInject replays the token minted for the client that
-# obtained it; registering a crab-mcp app does not change the aud claim.
+{{- /*
+One MCPOIDCConfig per vMCP. Issuer and JWKS are identical (one CERN realm);
+clientId tracks that vMCP's audience so nothing in the operator can trip on a
+mismatch between the ref's audience and the config's clientId.
+*/}}
+{{- range $v := .Values.vmcps }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpOIDCConfig }}
+kind: MCPOIDCConfig
+metadata:
+  name: {{ include "archi.name" (dict "base" (printf "cern-%s" $v.name) "ctx" $) }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+    archi-crab.cern.ch/vmcp: {{ $v.name }}
+spec:
+  type: inline
+  inline:
+    issuer: {{ $.Values.cern.issuer | quote }}
+    jwksUrl: {{ $.Values.cern.jwksUri | quote }}
+    clientId: {{ $v.audience | quote }}
+{{- end }}
+{{- if .Values.backendAuth.enabled }}
+---
+# Only rendered when the ToolHive PROXIES validate tokens themselves. Off by
+# default: the vMCP cannot authenticate to backends that enforce their own
+# OIDC (its health checks carry no user token), so the vMCP is the only gate
+# and NetworkPolicy protects the proxies. Kept so the switch back is one flag.
 apiVersion: {{ .Values.apiVersions.mcpOIDCConfig }}
 kind: MCPOIDCConfig
 metadata:
@@ -19,3 +41,4 @@ spec:
     issuer: {{ .Values.cern.issuer | quote }}
     jwksUrl: {{ .Values.cern.jwksUri | quote }}
     clientId: {{ .Values.cern.clientId | quote }}
+{{- end }}

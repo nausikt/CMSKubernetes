@@ -33,11 +33,6 @@ apiVersions:
 group:
   name: crab
 
-# ---------------------------------------------------------------------------
-# The vMCP: the only public surface. One hostname, one CERN client, one
-# redirect URI, one Cedar policy.
-# ---------------------------------------------------------------------------
-
 backendAuth:
   # FALSE deliberately. The vMCP cannot authenticate to backends that enforce
   # their own OIDC: its health checks and capability aggregation carry no user
@@ -50,22 +45,36 @@ backendAuth:
   # DISABLED and must be re-enabled before this carries users.
   enabled: false
 
+# ---------------------------------------------------------------------------
+# vMCPs: ONE PER AUDIENCE, all fronting the same MCPGroup.
+#
+# oidcConfigRef.audience is a single string and "MUST be unique per server".
+# Two client families produce two audiences, and nothing in the chain converts
+# one to the other (OpenWebUI forwards verbatim; ToolHive has no incoming-leg
+# exchange). So each client family gets its own vMCP: one extra hostname and
+# cert, no new CERN app, per-user identity intact. See templates/vmcp.yaml.
+# ---------------------------------------------------------------------------
+vmcps:
+  - name: crab-mcp-gateway
+    host: crab-mcp-gateway.cern.ch
+    # The PUBLIC client. Desktop MCP clients (Claude Code, mcp-inspector) do
+    # PKCE with a localhost redirect and hold no secret; CERN mints
+    # aud=<clientId>. claude mcp add --client-id crab-mcp-gateway-public ...
+    audience: crab-mcp-gateway-public
+  - name: crab-mcp-webui
+    host: crab-mcp-webui.cern.ch
+    # OpenWebUI's CONFIDENTIAL client -- the one users log in through, whose
+    # roles (base-user, archi-admins) gate the UI. auth_type: system_oauth
+    # forwards that login token as-is, so this vMCP validates its audience.
+    audience: archi-crab-production
+
+# Shared by every vMCP above.
 vmcp:
-  name: crab-mcp-gateway
-  host: crab-mcp-gateway.cern.ch
-  publicUrl: https://archi-crab.cern.ch:31393
-  servicePort: 4483              # the port the operator actually gives the
-                                 # vmcp- Service. NOT spec.port. Verify per env:
-                                 #   kubectl -n <ns> get svc | grep vmcp
-  port: 8080                     # vMCP Service port the HTTPRoute targets
+  servicePort: 4483              # the port the operator gives vmcp-<name>.
+                                 # NOT spec.port. Verify: kubectl get svc | grep vmcp
   publicPort: 31393              # NodePort: Octavia LB quota is 0, so the
                                  # Gateway is reached via the LanDB aliases.
-                                 # Appears in resourceUrl and the CERN callback.
-
-  incomingAuthType: oidc
-
-  backendDiscovery: discovered
-
+                                 # Appears in resourceUrl and every CERN callback.
   # BASE names -- the template applies nameSuffix. Required: without it the
   # operator writes its own backends map declaring type: externalAuthConfigRef
   # with the name from each MCPServer's oidcConfigRef, which is a different
@@ -75,30 +84,16 @@ vmcp:
     - site-status
     # - htcondor       # deferred: htcondor-idtokens not yet available
 
-  authServer:
-    # ToolHive becomes an OIDC issuer at this URL.
-    issuer: "https://crab-mcp-gateway.cern.ch:31393"
-    # BOTH refs are required in practice. Omit either and ToolHive generates
-    # EPHEMERAL keys: every pod restart invalidates all tokens and forces every
-    # user to re-authenticate. Tested by the restart check in the runbook.
-    signingKeySecret: {name: thv-jwt-signing, key: private-key}
-    hmacSecret:       {name: thv-hmac,        key: hmac-key}
-    tokenLifespans:
-      accessTokenLifespan: 1h
-      refreshTokenLifespan: 168h
-      authCodeLifespan: 10m
-
 cern:
   issuer:  "https://auth.cern.ch/auth/realms/cern"
   jwksUri: "https://auth.cern.ch/auth/realms/cern/protocol/openid-connect/certs"
-  # The PUBLIC client desktop MCP clients authenticate with. Its own ID is the
-  # audience: CERN mints aud=<clientId>, and the vMCP plus every backend
-  # validate exactly that. One value, one audience, whole chain consistent.
+  # The audience the BACKENDS validate (<PREFIX>_OIDC__AUDIENCE) when they
+  # check tokens themselves. With two vMCPs a backend may receive either
+  # audience, which is why site-status and crab below have
+  # disableBearerAuth: true -- the vMCP is the only gate until
+  # MCPExternalAuthConfig gives each backend its own exchanged audience.
   clientId: "crab-mcp-gateway-public"
   scopes: [openid, profile, email]
-  # Kept for the confidential client, unused while incomingAuth is oidc and
-  # authServer.enabled is false. Preserved so switching back is one value.
-  clientSecret: {secretName: toolhive-idp-secret, key: client-secret}
 
 # ---------------------------------------------------------------------------
 # Cedar. ONE policy over the aggregated tool surface -- the vMCP dividend.
@@ -180,7 +175,6 @@ servers:
   # DEFERRED: htcondor-idtokens secret not yet available (/data/certs/tokens.d).
   # Re-enable with the secret. Needs egress 9620 to CERN *and* FNAL when
   # NetworkPolicy is turned on, and has no OIDC block of its own (F60).
-  # - name: htcondor
   # - name: htcondor
   #   image: registry.cern.ch/cmscrab/htcondor-mcp:preprod-1789132354
   #   transport: streamable-http

@@ -1,80 +1,63 @@
-{{- $n := include "archi.name" (dict "base" .Values.vmcp.name "ctx" $) }}
-# The only public surface. One hostname, one CERN client, one redirect URI,
-# one Cedar policy, one aggregated tool list.
-#
-# TODO verify every field name against your operator build:
-#   kubectl explain virtualmcpserver.spec --recursive
-apiVersion: {{ .Values.apiVersions.virtualMCPServer }}
+{{- /*
+ONE VirtualMCPServer PER AUDIENCE, all fronting the same MCPGroup.
+
+WHY A LIST: oidcConfigRef.audience is a single string, and the CRD says it
+"MUST be unique per server to prevent token replay attacks". Two client
+families produce two audiences:
+
+  Claude Code / mcp-inspector  ->  public client   -> aud=crab-mcp-gateway-public[-staging]
+  OpenWebUI (system_oauth)     ->  confidential    -> aud=archi-crab-[production|staging]
+
+Nothing in the chain converts one to the other: OpenWebUI forwards tokens
+verbatim (all four auth_type values, read from routers/configs.py), and
+ToolHive 0.47.0 has no exchange hook on the INCOMING leg
+(MCPExternalAuthConfig is outgoing-only). So: one vMCP per audience, same
+backends, one extra hostname and cert. No new CERN app.
+
+Operator 0.47.0 quirks, all found by apply and all still true:
+  - incomingAuth.type enum is anonymous|oidc; "local" is documented, not implemented
+  - oidcConfigRef is REQUIRED when type is oidc; inline `oidc:` is rejected (CEL)
+  - source: discovered self-populates a backends map with type:
+    externalAuthConfigRef using each MCPServer's oidcConfigRef name -- a
+    different kind, so it 404s. The explicit map below pins type: discovered.
+  - the Service is vmcp-<name> on port 4483, not spec.port (see httproute.yaml)
+*/}}
+{{- range $v := .Values.vmcps }}
+{{- $n := include "archi.name" (dict "base" $v.name "ctx" $) }}
+---
+apiVersion: {{ $.Values.apiVersions.virtualMCPServer }}
 kind: VirtualMCPServer
 metadata:
   name: {{ $n }}
-  namespace: {{ .Values.namespace }}
+  namespace: {{ $.Values.namespace }}
   annotations: {argocd.argoproj.io/sync-wave: "3"}
   labels:
-{{ include "archi.labels" . | indent 4 }}
+{{ include "archi.labels" $ | indent 4 }}
+    archi-crab.cern.ch/vmcp: {{ $v.name }}
 spec:
   groupRef:
-    name: {{ include "archi.name" (dict "base" .Values.group.name "ctx" $) }}
+    name: {{ include "archi.name" (dict "base" $.Values.group.name "ctx" $) }}
 
   incomingAuth:
-    type: {{ .Values.vmcp.incomingAuthType }}
-{{- if eq .Values.vmcp.incomingAuthType "oidc" }}
-    # A REFERENCE to an MCPOIDCConfig -- the CEL rule requires it when type is
-    # oidc, and inline settings are rejected. cern-replayed-staging already
-    # validates this exact token: iss=auth.cern.ch, aud=crab-mcp-gateway-staging.
+    type: oidc
     oidcConfigRef:
-      name: {{ include "archi.name" (dict "base" "cern-replayed" "ctx" $) }}
-      # Required by the CRD. The client presents a CERN token minted for the
-      # vMCP's upstream client, so aud = cern.clientId.
-      audience: {{ .Values.cern.clientId | quote }}
+      # Per-vMCP MCPOIDCConfig (oidc-config.yaml) -- issuer and JWKS are the
+      # same CERN realm for both; only the audience differs, and it is set here.
+      name: {{ include "archi.name" (dict "base" (printf "cern-%s" $v.name) "ctx" $) }}
+      audience: {{ $v.audience | quote }}
       # Advertised in OAuth discovery. Carries the NodePort, or clients are
       # pointed at an address that does not answer.
-      resourceUrl: "https://{{ .Values.vmcp.host }}:{{ .Values.vmcp.publicPort }}/mcp"
-{{- end }}
+      resourceUrl: "https://{{ $v.host }}:{{ $.Values.vmcp.publicPort }}/mcp"
+
   outgoingAuth:
-    source: {{ .Values.vmcp.backendDiscovery }}
-{{- if .Values.vmcp.backends }}
-    # Explicit override. `discovered` alone writes a backends map claiming
-    # type: externalAuthConfigRef with the name taken from each backend's
-    # oidcConfigRef -- a different kind, so the lookup 404s and the vMCP fails.
-    # Operator 0.47.0.
+    source: discovered
     backends:
-{{- range .Values.vmcp.backends }}
+{{- range $.Values.vmcp.backends }}
       {{ include "archi.name" (dict "base" . "ctx" $) }}:
         type: discovered
 {{- end }}
-{{- end }}
-
-{{- if eq .Values.vmcp.incomingAuthType "local" }}
-  authServerConfig:
-    issuer: {{ .Values.vmcp.authServer.issuer | quote }}
-    # BOTH refs required in practice. Signing keys sign the JWTs; HMAC secrets
-    # decode authorization codes and refresh tokens. Omit either and ToolHive
-    # auto-generates EPHEMERAL keys -- every pod restart invalidates all tokens
-    # and forces every user to re-authenticate.
-    signingKeySecretRefs:
-      - name: {{ .Values.vmcp.authServer.signingKeySecret.name }}
-        key: {{ .Values.vmcp.authServer.signingKeySecret.key }}
-    hmacSecretRefs:
-      - name: {{ .Values.vmcp.authServer.hmacSecret.name }}
-        key: {{ .Values.vmcp.authServer.hmacSecret.key }}
-    tokenLifespans:
-{{ toYaml .Values.vmcp.authServer.tokenLifespans | indent 6 }}
-    upstreamProviders:
-      # ONE provider = one login. Multiple providers chain sequentially and the
-      # user is redirected to each in turn.
-      - name: cern
-        type: oidc
-        oidcConfig:
-          issuerUrl: {{ .Values.cern.issuer | quote }}
-          clientId: {{ .Values.cern.clientId | quote }}
-          clientSecretRef:
-            name: {{ .Values.cern.clientSecret.secretName }}
-            key: {{ .Values.cern.clientSecret.key }}
-          scopes: {{ .Values.cern.scopes | toJson }}
-{{- end }}
-
-{{- if .Values.authz.enabled }}
+{{- if $.Values.authz.enabled }}
   authzConfigRef:
     name: {{ include "archi.name" (dict "base" "cedar" "ctx" $) }}
+{{- end }}
 {{- end }}

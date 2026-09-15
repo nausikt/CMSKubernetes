@@ -1,30 +1,36 @@
-{{- $n := include "archi.name" (dict "base" .Values.vmcp.name "ctx" $) }}
-# ONE route for the whole stack. Backends have no public hostname at all --
-# that is the vMCP dividend: adding MCP #4 and #5 costs zero hostnames,
-# zero certificates and zero CERN registrations.
+{{- /*
+One HTTPRoute per vMCP. Backends have no public hostname at all -- that is
+the vMCP dividend: adding MCP #4 and #5 costs zero hostnames. Adding a CLIENT
+FAMILY costs one, because it means one more audience (see vmcp.yaml).
+*/}}
+{{- range $v := .Values.vmcps }}
+{{- $n := include "archi.name" (dict "base" $v.name "ctx" $) }}
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: {{ $n }}
-  namespace: {{ .Values.namespace }}
+  namespace: {{ $.Values.namespace }}
   annotations: {argocd.argoproj.io/sync-wave: "4"}
   labels:
-{{ include "archi.labels" . | indent 4 }}
+{{ include "archi.labels" $ | indent 4 }}
+    archi-crab.cern.ch/vmcp: {{ $v.name }}
 spec:
   parentRefs:
-    - name: {{ .Values.gateway.baseName }}
-      namespace: {{ .Values.gateway.namespace }}
+    - name: {{ $.Values.gateway.baseName }}
+      namespace: {{ $.Values.gateway.namespace }}
   hostnames:
-    - {{ .Values.vmcp.host | quote }}
+    - {{ $v.host | quote }}
   rules:
     - backendRefs:
-        # The operator prefixes the Service with "vmcp-" and assigns its own
-        # port -- neither matches the CR name or spec.port. Confirm with:
-        #   kubectl -n <ns> get svc | grep vmcp
+        # The operator names the Service vmcp-<cr-name> and assigns port 4483
+        # (same across instances so far -- your colleague's Route hardcodes it
+        # too). Confirm on first sync: kubectl -n <ns> get svc | grep vmcp
         - name: vmcp-{{ $n }}
-          port: {{ .Values.vmcp.servicePort }}
+          port: {{ $.Values.vmcp.servicePort }}
       # MCP holds long-lived streaming connections. The default timeout drops
       # SSE mid-session and tools/list still passes, so it hides from smoke tests.
       timeouts:
-        backendRequest: {{ .Values.gateway.timeout }}
-        request: {{ .Values.gateway.timeout }}
+        backendRequest: {{ $.Values.gateway.timeout }}
+        request: {{ $.Values.gateway.timeout }}
+{{- end }}

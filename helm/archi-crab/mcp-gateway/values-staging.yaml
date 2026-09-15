@@ -17,23 +17,36 @@ backendAuth:
   # DISABLED and must be re-enabled before this carries users.
   enabled: false
 
+# ---------------------------------------------------------------------------
+# vMCPs: ONE PER AUDIENCE, all fronting the same MCPGroup.
+#
+# oidcConfigRef.audience is a single string and "MUST be unique per server".
+# Two client families produce two audiences, and nothing in the chain converts
+# one to the other (OpenWebUI forwards verbatim; ToolHive has no incoming-leg
+# exchange). So each client family gets its own vMCP: one extra hostname and
+# cert, no new CERN app, per-user identity intact. See templates/vmcp.yaml.
+# ---------------------------------------------------------------------------
+vmcps:
+  - name: crab-mcp-gateway
+    host: crab-mcp-gateway-staging.cern.ch
+    # The PUBLIC client. Desktop MCP clients (Claude Code, mcp-inspector) do
+    # PKCE with a localhost redirect and hold no secret; CERN mints
+    # aud=<clientId>. claude mcp add --client-id crab-mcp-gateway-public-staging ...
+    audience: crab-mcp-gateway-public-staging
+  - name: crab-mcp-webui
+    host: crab-mcp-webui-staging.cern.ch
+    # OpenWebUI's CONFIDENTIAL client -- the one users log in through, whose
+    # roles (base-user, archi-admins) gate the UI. auth_type: system_oauth
+    # forwards that login token as-is, so this vMCP validates its audience.
+    audience: archi-crab-staging
+
+# Shared by every vMCP above.
 vmcp:
-  name: crab-mcp-gateway
-  host: crab-mcp-gateway-staging.cern.ch
-  publicUrl: https://archi-crab-staging.cern.ch:31393
-  servicePort: 4483              # the port the operator actually gives the
-                                 # vmcp- Service. NOT spec.port. Verify per env:
-                                 #   kubectl -n <ns> get svc | grep vmcp
-  port: 8080                     # vMCP Service port the HTTPRoute targets
+  servicePort: 4483              # the port the operator gives vmcp-<name>.
+                                 # NOT spec.port. Verify: kubectl get svc | grep vmcp
   publicPort: 31393              # NodePort: Octavia LB quota is 0, so the
                                  # Gateway is reached via the LanDB aliases.
-                                 # Appears in resourceUrl and the CERN callback.
-
-  # enum: anonymous | oidc   ("local" is described but not implemented in 0.47.0)
-  incomingAuthType: oidc
-
-  backendDiscovery: discovered
-
+                                 # Appears in resourceUrl and every CERN callback.
   # BASE names -- the template applies nameSuffix. Required: without it the
   # operator writes its own backends map declaring type: externalAuthConfigRef
   # with the name from each MCPServer's oidcConfigRef, which is a different
@@ -43,28 +56,16 @@ vmcp:
     - site-status
     # - htcondor       # deferred: htcondor-idtokens not yet available
 
-  authServer:
-    # Inert while incomingAuthType is oidc. Kept so the switch is one enum value
-    # if "local" lands upstream.
-    issuer: "https://crab-mcp-gateway-staging.cern.ch:31393"
-    signingKeySecret: {name: thv-jwt-signing, key: private-key}
-    hmacSecret:       {name: thv-hmac,        key: hmac-key}
-    tokenLifespans:
-      accessTokenLifespan: 1h
-      refreshTokenLifespan: 168h
-      authCodeLifespan: 10m
-
 cern:
   issuer:  "https://auth.cern.ch/auth/realms/cern"
   jwksUri: "https://auth.cern.ch/auth/realms/cern/protocol/openid-connect/certs"
-  # The PUBLIC client desktop MCP clients authenticate with. Its own ID is the
-  # audience: CERN mints aud=<clientId>, and the vMCP plus every backend
-  # validate exactly that. One value, one audience, whole chain consistent.
+  # The audience the BACKENDS validate (<PREFIX>_OIDC__AUDIENCE) when they
+  # check tokens themselves. With two vMCPs a backend may receive either
+  # audience, which is why site-status and crab below have
+  # disableBearerAuth: true -- the vMCP is the only gate until
+  # MCPExternalAuthConfig gives each backend its own exchanged audience.
   clientId: "crab-mcp-gateway-public-staging"
   scopes: [openid, profile, email]
-  # Kept for the confidential client, unused while incomingAuth is oidc and
-  # authServer.enabled is false. Preserved so switching back is one value.
-  clientSecret: {secretName: toolhive-idp-secret, key: client-secret}
 
 authz:
   enabled: false
@@ -88,6 +89,11 @@ servers:
     writablePaths: [/tmp]
     envPrefix: SITE_STATUS_MCP
     operatorUsernames: "lhsuanch"
+    # With two vMCPs this backend receives tokens carrying EITHER audience,
+    # and its verifier checks one. Consistent with crab below and with
+    # backendAuth.enabled: false -- the vMCP is the only gate. Revert together
+    # with crab when MCPExternalAuthConfig gives each backend its own audience.
+    disableBearerAuth: true
     env:
       - {name: SITE_STATUS_MCP_OPENSEARCH__BASE_URL, value: "https://monit-grafana.cern.ch/api/datasources/proxy/9475"}
       - {name: SITE_STATUS_MCP_SERVER__LOGS_ROOT,    value: "/tmp/logs"}
@@ -117,7 +123,10 @@ servers:
     # only CRAB_MCP_OIDC__AUDIENCE changes). Tracked as <ticket>.
     disableBearerAuth: true
     env:
-      - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb.cern.ch/crabserver/prod"}
+      # STAGING hits the CRAB TESTBED. Pointing staging at production CRAB with
+      # disableBearerAuth: true is unauthenticated reads of production task data
+      # via the robot cert -- this regressed once already (F59).
+      - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb-testbed.cern.ch/crabserver/preprod"}
       - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}
       - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
       - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-certs/igtf.pem"}

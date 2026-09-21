@@ -17,6 +17,7 @@ spec:
   description: ARCHI-CRAB MCP platform
   sourceRepos:
     - https://github.com/nausikt/CMSKubernetes.git
+    - https://github.com/nausikt/archi-crab-okg.git      # okg instance repo (helm/okg + envs/)
     - https://github.com/kubernetes-sigs/gateway-api
     - ghcr.io/stacklok/toolhive
   destinations:

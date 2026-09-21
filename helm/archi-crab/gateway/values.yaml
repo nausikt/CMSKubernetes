@@ -64,6 +64,15 @@ listeners:
   - host: crab-mcp-webui-staging.cern.ch    # second vMCP: OpenWebUI's audience
     tlsSecret: crab-mcp-webui-staging-tls
     env: staging
+  # okg: archi-crab knowledge graph MCP (MCPRemoteProxy in mcp-gateway chart).
+  # A listener whose cert Secret is missing goes ResolvedRefs=False on its own,
+  # others unaffected -- safe to land before the cert.
+  - host: archi-crab-okg-staging.cern.ch
+    tlsSecret: archi-crab-okg-staging-tls
+    env: staging
+  # - host: archi-crab-okg.cern.ch
+  #   tlsSecret: archi-crab-okg-tls
+  #   env: prod
   - host: archi-crab-testbed.cern.ch
     tlsSecret: archi-crab-testbed-tls
     scope: shared

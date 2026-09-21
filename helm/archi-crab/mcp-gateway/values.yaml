@@ -29,6 +29,8 @@ apiVersions:
   virtualMCPServer: toolhive.stacklok.dev/v1beta1
   mcpOIDCConfig: toolhive.stacklok.dev/v1beta1
   mcpTelemetryConfig: toolhive.stacklok.dev/v1beta1
+  mcpRemoteProxy: toolhive.stacklok.dev/v1beta1
+  mcpAuthzConfig: toolhive.stacklok.dev/v1beta1
 
 group:
   name: crab
@@ -212,3 +214,7 @@ networkPolicy:
     - "188.184.91.154/32"
   apiServerPort: 6443
   
+
+# Standalone remote gateways (templates/remoteproxy.yaml): own hostname,
+# audience, Cedar. Environments add entries; see values-staging.yaml (okg).
+remoteProxies: []

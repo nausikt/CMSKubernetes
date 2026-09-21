@@ -1,0 +1,95 @@
+{{- /*
+STANDALONE REMOTE GATEWAYS. Each entry fronts an existing MCP URL (in-cluster
+or remote) with a ToolHive MCPRemoteProxy that owns its OWN hostname, audience
+and Cedar policy -- no vMCP, no group. Used first for archi-crab-okg
+(archi-crab-okg-staging.cern.ch -> the okg runtime's mcp Service).
+Shapes verified 2026-09-16 (kubectl explain mcpremoteproxy.spec): remoteUrl,
+transport, proxyPort, oidcConfigRef, externalAuthConfigRef, allowPrivateEndpoint.
+All v1beta1; shapes confirmed by server dry-run 2026-09-21. Still gated: the proxy Service name.
+*/}}
+{{- range $p := .Values.remoteProxies }}
+{{- $n := include "archi.name" (dict "base" $p.name "ctx" $) }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpOIDCConfig }}
+kind: MCPOIDCConfig
+metadata:
+  name: {{ include "archi.name" (dict "base" (printf "cern-%s" $p.name) "ctx" $) }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "1"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  type: inline
+  inline:
+    issuer: {{ $.Values.cern.issuer | quote }}
+    jwksUrl: {{ $.Values.cern.jwksUri | quote }}
+    clientId: {{ $p.audience | quote }}
+{{- if $p.policies }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpAuthzConfig }}
+kind: MCPAuthzConfig
+metadata:
+  name: {{ $n }}-cedar
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  # v1beta1 shape (docs.stacklok.com/toolhive/reference/crds/mcpauthzconfig):
+  # generic `config`, contents keyed by type. Verified by server dry-run.
+  type: cedarv1
+  config:
+    entities_json: "[]"
+    policies:
+{{- range $p.policies }}
+      - |
+{{ . | indent 8 }}
+{{- end }}
+{{- end }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpRemoteProxy }}
+kind: MCPRemoteProxy
+metadata:
+  name: {{ $n }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "3"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  remoteUrl: {{ $p.url }}
+  transport: streamable-http
+  proxyPort: 8080
+{{- if $p.private }}
+  allowPrivateEndpoint: true          # in-cluster upstream (okg mcp Service)
+{{- end }}
+  oidcConfigRef:
+    name: {{ include "archi.name" (dict "base" (printf "cern-%s" $p.name) "ctx" $) }}
+    audience: {{ $p.audience | quote }}       # required on the ref (dry-run confirmed)
+    resourceUrl: "https://{{ $p.host }}/mcp"  # OAuth discovery for Claude Code / inspector
+{{- if $p.policies }}
+  authzConfigRef:
+    name: {{ $n }}-cedar
+{{- end }}
+  audit: {enabled: true}
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits:   {cpu: 200m, memory: 256Mi}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $n }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  parentRefs:
+    - {name: archi-crab, namespace: archi-crab-gw}
+  hostnames: [{{ $p.host | quote }}]
+  rules:
+    - backendRefs:
+        - name: {{ $p.service | default (printf "mcp-%s-proxy" $n) }}   # gate: kubectl get svc | grep <name>
+          port: 8080
+      timeouts: {backendRequest: 3600s, request: 3600s}
+{{- end }}

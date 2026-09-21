@@ -1,0 +1,25 @@
+# archi-crab-okg, staging. Rendered FROM the instance repo; this file only points
+# at it. Application name == fullnameOverride in envs/staging/values.yaml.
+# Wave 4: after platform (namespace) and before mcp-gateway (5), whose okg
+# MCPRemoteProxy fronts this app's mcp Service.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-okg-staging
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: main
+    path: helm/okg
+    helm:
+      valueFiles: [../../envs/staging/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 3, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}
+  # Degraded while the worker probe cannot pass (upstream okg readiness bug) is
+  # REAL -- no ignoreDifferences / health overrides to hide it.

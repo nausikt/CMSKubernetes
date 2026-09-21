@@ -16,7 +16,10 @@ spec:
     # which also sidesteps the missing custom-CA support (F20).
     endpoint: {{ .Values.telemetry.endpoint | quote }}
     insecure: true
-    tracing: {enabled: true, sampleRate: {{ .Values.telemetry.sampleRate }}}
+    # v1beta1 renamed sampleRate -> samplingRate (string). The old key was silently
+    # dropped, leaving the operator default 0.05 -- this is also why otel-staging
+    # showed a permanent OutOfSync.
+    tracing: {enabled: true, samplingRate: {{ .Values.telemetry.sampleRate | toString | quote }}}
     metrics: {enabled: true}
     resourceAttributes:
       deployment.environment: {{ .Values.env | quote }}

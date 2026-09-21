@@ -89,7 +89,7 @@ spec:
   hostnames: [{{ $p.host | quote }}]
   rules:
     - backendRefs:
-        - name: {{ $p.service | default (printf "mcp-%s-proxy" $n) }}   # gate: kubectl get svc | grep <name>
+        - name: {{ $p.service | default (printf "mcp-%s-remote-proxy" $n) }}   # operator naming, confirmed 2026-09-21
           port: 8080
       timeouts: {backendRequest: 3600s, request: 3600s}
 {{- end }}

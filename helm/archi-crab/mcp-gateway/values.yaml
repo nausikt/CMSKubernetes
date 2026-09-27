@@ -123,8 +123,8 @@ authz:
         - |
           // Raw SQL never reaches agents, through the bundle either (the okg
           // entry's tools carry its workload prefix).
-          forbid(principal, action == Action::"call_tool",
-                 resource in [Tool::"okg-staging_query", Tool::"okg_query"]);
+          forbid(principal, action == Action::"call_tool", resource)
+          when { resource in [Tool::"okg-staging_query", Tool::"okg_query"] };
         - |
           // General audience: every CMS member may call every aggregated tool.
           permit(principal, action == Action::"call_tool", resource)

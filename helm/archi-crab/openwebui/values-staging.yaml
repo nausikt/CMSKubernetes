@@ -33,7 +33,7 @@ toolServers:
     auth_type: "system_oauth"
     key: null
     config: {}
-    info: {id: crab, enabled: true}
+    info: {id: crab, name: "CRAB bundle", description: "CRAB, site status, CompOps (Rucio)", enabled: true}
   # okg (knowledge graph): its own internal vMCP, separate from the crab bundle.
   - url: "http://vmcp-okg-webui-staging.archi-crab-staging.svc:4483"
     path: "/mcp"
@@ -41,7 +41,7 @@ toolServers:
     auth_type: "system_oauth"
     key: null
     config: {}
-    info: {id: okg, enabled: true}
+    info: {id: okg, name: "archi-crab-okg", description: "CRAB knowledge graph (code, docs)", enabled: true}
 
 # Staging attaches both servers; prod stays [crab] until its okg vMCP exists
 # (the model job fails loudly on an unregistered id). Helm deep-merges model.

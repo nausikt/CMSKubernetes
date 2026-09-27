@@ -40,7 +40,9 @@ body = {
     "access_control": None,          # public: every signed-in user sees it
     "is_active": True,
 }
-existing = {m.get("id") for m in (call("GET", "/api/v1/models/", token=token) or [])}
+# Workspace (custom) models live at /models/list -> {"items":[...]}. The
+# trailing-slash /models/ falls through to the SPA (HTML) on this build.
+existing = {m.get("id") for m in ((call("GET", "/api/v1/models/list", token=token) or {}).get("items") or [])}
 if spec["id"] in existing:
     call("POST", f"/api/v1/models/model/update?id={spec['id']}", body, token=token)
     print(f"updated model {spec['id']} tools={tool_ids}")
@@ -50,9 +52,10 @@ else:
 
 if spec.get("default"):
     try:
-        call("POST", "/api/v1/configs/models",
-             {"DEFAULT_MODELS": spec["id"], "MODEL_ORDER_LIST": [spec["id"]]},
-             token=token)
+        cfg = call("GET", "/api/v1/configs/models", token=token) or {}
+        order = [m for m in (cfg.get("MODEL_ORDER_LIST") or []) if m != spec["id"]]
+        cfg.update({"DEFAULT_MODELS": spec["id"], "MODEL_ORDER_LIST": [spec["id"]] + order})
+        call("POST", "/api/v1/configs/models", cfg, token=token)   # read-modify-write
         print(f"default model -> {spec['id']}")
     except Exception:
         print("could not set default via /api/v1/configs/models -- set it once "

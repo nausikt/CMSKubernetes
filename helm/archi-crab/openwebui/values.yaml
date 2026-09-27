@@ -73,9 +73,9 @@ model:
   id: crab-assistant
   name: "CRAB Assistant"
   base: gpt-5-luna                # must match a LiteLLM model id
-  # Which registered tool servers to attach, matched against OpenWebUI's tool
-  # ids so the exact "server:<id>" format never has to be hardcoded.
-  toolMatch: [crab]
+  description: "CRAB operations assistant (CRAB, site status, CompOps, knowledge graph)"
+  # toolServers[].info.id values to attach; the job renders server:mcp:<id>.
+  tools: [crab]
   default: true                   # also set as the instance default model
   prompt: |
     You have access to operational tools relevant to this assistant.

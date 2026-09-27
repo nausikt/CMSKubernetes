@@ -1,10 +1,12 @@
 """Upsert the assistant model from MODEL_JSON and make it the default.
 
-Idempotent by id: create if absent, update otherwise. Tool servers are matched
-against /api/v1/tools ids (substring, case-insensitive) so the exact
-"server:<id>" naming OpenWebUI uses never has to be hardcoded here. Setting
-the default model uses /api/v1/configs/models; if that endpoint moves in a
-future OpenWebUI, the script prints the manual step instead of failing the sync.
+Idempotent by id: create if absent, update otherwise.
+
+Tools: MCP tool servers registered in admin settings are addressed as
+`server:mcp:<info.id>` (docs.openwebui.com/reference/server-side-tool-calling).
+They do NOT appear in /api/v1/tools/ (that list is Python workspace tools), so
+the v9 substring matcher found nothing. MODEL_JSON.tools lists info.ids; this
+script verifies each is registered before attaching, and fails loudly if not.
 """
 import json
 import os
@@ -12,20 +14,20 @@ from _webui import call, die, signin, wait_for_webui
 
 spec = json.loads(os.environ.get("MODEL_JSON", "{}"))
 if not spec:
-    print("MODEL_JSON empty -- nothing to do")
-    raise SystemExit(0)
+    die("MODEL_JSON empty -- the model job has no spec (chart wiring bug)")
 
 wait_for_webui()
 token = signin() or die("admin signin failed -- run create-admin.py first")
 
-tools = call("GET", "/api/v1/tools/", token=token) or []
-matches = [m.lower() for m in spec.get("toolMatch", [])]
-tool_ids = sorted({t["id"] for t in tools
-                   for m in matches if m in t.get("id", "").lower()})
-missing = [m for m in matches if not any(m in i.lower() for i in tool_ids)]
+registered = (call("GET", "/api/v1/configs/tool_servers", token=token) or {}) \
+    .get("TOOL_SERVER_CONNECTIONS", [])
+reg_ids = {t.get("info", {}).get("id") for t in registered if isinstance(t, dict)}
+wanted = spec.get("tools", [])
+missing = [t for t in wanted if t not in reg_ids]
 if missing:
-    print(f"WARNING: no registered tool id matched {missing} -- "
-          f"available: {[t.get('id') for t in tools]}")
+    die(f"tool server(s) {missing} not registered (have {sorted(i for i in reg_ids if i)}) "
+        "-- the tools job must run first")
+tool_ids = [f"server:mcp:{t}" for t in wanted]
 
 body = {
     "id": spec["id"],
@@ -33,17 +35,18 @@ body = {
     "base_model_id": spec["base"],
     "params": {"system": spec.get("prompt", ""), "function_calling": "native"},
     "meta": {"profile_image_url": "/static/favicon.png",
-             "description": "CRAB operations assistant",
+             "description": spec.get("description", ""),
              "toolIds": tool_ids},
+    "access_control": None,          # public: every signed-in user sees it
     "is_active": True,
 }
 existing = {m.get("id") for m in (call("GET", "/api/v1/models/", token=token) or [])}
 if spec["id"] in existing:
     call("POST", f"/api/v1/models/model/update?id={spec['id']}", body, token=token)
-    print(f"updated model {spec['id']} (tools: {tool_ids or '-'})")
+    print(f"updated model {spec['id']} tools={tool_ids}")
 else:
     call("POST", "/api/v1/models/create", body, token=token)
-    print(f"created model {spec['id']} (tools: {tool_ids or '-'})")
+    print(f"created model {spec['id']} tools={tool_ids}")
 
 if spec.get("default"):
     try:

@@ -73,6 +73,10 @@ spec:
               valueFrom: {secretKeyRef: {name: openwebui-admin, key: password}}
 {{- if eq $job.name "tools" }}
             - {name: TOOL_SERVERS_JSON, value: {{ $.Values.toolServers | toJson | quote }}}
+{{- end }}
+{{- if eq $job.name "model" }}
+            # Was wired into the tools job by mistake (v9): the model job then
+            # saw MODEL_JSON empty, exited 0, and CRAB Assistant never existed.
             - {name: MODEL_JSON, value: {{ $.Values.model | toJson | quote }}}
 {{- end }}
           command: ["python3", "/scripts/{{ $job.script }}"]

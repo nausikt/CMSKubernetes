@@ -1,19 +1,32 @@
 {{- if .Values.authz.enabled }}
-# ONE Cedar policy over the aggregated tool surface -- the vMCP dividend.
-#
-# ROLLOUT: keep the backends' OPERATOR_USERNAMES populated while this shadows
-# them. Cedar denies BEFORE the backend is reached, so a policy bug presents as
-# a broken tool rather than a denied one. Empty those env vars only after a week
-# with no divergence between gateway and app denials.
-apiVersion: v1
-kind: ConfigMap
+{{- /*
+Cedar, one MCPAuthzConfig PER POLICY SET so each gateway is separately
+manageable: vmcps (and remoteProxies) pick a set via `authzSet`, default
+"default". authzConfigRef resolves an MCPAuthzConfig, NOT a ConfigMap
+(gate: kubectl explain mcpauthzconfig.spec --recursive).
+ROLLOUT: keep backends' OPERATOR_USERNAMES during the shadow week -- Cedar
+denies BEFORE the backend, so a policy bug looks like a broken tool.
+*/}}
+{{- range $set, $cfg := .Values.authz.sets }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpAuthzConfig }}
+kind: MCPAuthzConfig
 metadata:
-  name: {{ include "archi.name" (dict "base" "cedar" "ctx" $) }}
-  namespace: {{ .Values.namespace }}
+  name: {{ include "archi.name" (dict "base" (printf "cedar-%s" $set) "ctx" $) }}
+  namespace: {{ $.Values.namespace }}
   annotations: {argocd.argoproj.io/sync-wave: "2"}
   labels:
-{{ include "archi.labels" . | indent 4 }}
-data:
-  policy.cedar: |
-{{ .Values.authz.policies | indent 4 }}
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  # v1beta1 shape, confirmed by server dry-run 2026-09-21: generic `config`,
+  # contents keyed by type (same as remoteproxy.yaml).
+  type: cedarv1
+  config:
+    entities_json: "[]"
+    policies:
+{{- range $cfg.policies }}
+      - |
+{{ . | indent 8 }}
+{{- end }}
+{{- end }}
 {{- end }}

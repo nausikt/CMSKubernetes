@@ -1,10 +1,16 @@
-# The trust boundary. Everything in this group shares one vMCP audience, so a
-# client token works across every member. Only add MCPs owned by the same team.
-apiVersion: {{ .Values.apiVersions.mcpGroup }}
+{{- /*
+Each MCPGroup is a TRUST BOUNDARY: everything in a group is exposed together
+by that group's vMCPs and shares their audiences. One group per owning team.
+An empty group (grid, until CRIC/IAM land) is inert and harmless.
+*/}}
+{{- range $g := .Values.groups }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpGroup }}
 kind: MCPGroup
 metadata:
-  name: {{ include "archi.name" (dict "base" .Values.group.name "ctx" $) }}
-  namespace: {{ .Values.namespace }}
+  name: {{ include "archi.name" (dict "base" $g "ctx" $) }}
+  namespace: {{ $.Values.namespace }}
   annotations: {argocd.argoproj.io/sync-wave: "1"}
   labels:
-{{ include "archi.labels" . | indent 4 }}
+{{ include "archi.labels" $ | indent 4 }}
+{{- end }}

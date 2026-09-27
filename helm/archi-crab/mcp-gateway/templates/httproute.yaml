@@ -4,6 +4,7 @@ the vMCP dividend: adding MCP #4 and #5 costs zero hostnames. Adding a CLIENT
 FAMILY costs one, because it means one more audience (see vmcp.yaml).
 */}}
 {{- range $v := .Values.vmcps }}
+{{- if not $v.internal }}
 {{- $n := include "archi.name" (dict "base" $v.name "ctx" $) }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -33,4 +34,5 @@ spec:
       timeouts:
         backendRequest: {{ $.Values.gateway.timeout }}
         request: {{ $.Values.gateway.timeout }}
+{{- end }}
 {{- end }}

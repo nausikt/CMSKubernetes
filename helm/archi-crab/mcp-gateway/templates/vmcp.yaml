@@ -36,7 +36,7 @@ metadata:
     archi-crab.cern.ch/vmcp: {{ $v.name }}
 spec:
   groupRef:
-    name: {{ include "archi.name" (dict "base" $.Values.group.name "ctx" $) }}
+    name: {{ include "archi.name" (dict "base" ($v.group | default $.Values.group.name) "ctx" $) }}
 
   incomingAuth:
     type: oidc
@@ -47,17 +47,41 @@ spec:
       audience: {{ $v.audience | quote }}
       # Advertised in OAuth discovery. Bare :443 via the Octavia LB -- a port
       # here would point clients at an address that no longer answers.
+{{- if $v.internal }}
+      # In-cluster only (OpenWebUI's backend calls it server-side): no hostname,
+      # no listener, no cert, no LB hairpin. resourceUrl is what OAuth discovery
+      # would advertise -- moot here, but the field is required.
+      resourceUrl: "http://vmcp-{{ $n }}.{{ $.Values.namespace }}.svc:{{ $.Values.vmcp.servicePort }}/mcp"
+{{- else }}
       resourceUrl: "https://{{ $v.host }}/mcp"
+{{- end }}
+
+{{- if $.Values.authz.enabled }}
+    # Cedar lives INSIDE incomingAuth on VirtualMCPServer (v1beta1), unlike
+    # MCPRemoteProxy where it is top-level. Confirmed against the CRD 2026-09-27.
+    authzConfigRef:
+      name: {{ include "archi.name" (dict "base" (printf "cedar-%s" ($v.authzSet | default "default")) "ctx" $) }}
+{{- end }}
 
   outgoingAuth:
     source: discovered
     backends:
-{{- range $.Values.vmcp.backends }}
+{{- range ($v.backends | default $.Values.vmcp.backends) }}
       {{ include "archi.name" (dict "base" . "ctx" $) }}:
         type: discovered
 {{- end }}
-{{- if $.Values.authz.enabled }}
-  authzConfigRef:
-    name: {{ include "archi.name" (dict "base" "cedar" "ctx" $) }}
+{{- /* Remote group members: outgoing token exchange instead of discovery.
+       Shape gate: kubectl explain virtualmcpserver.spec.outgoingAuth.backends */}}
+{{- range $e := $.Values.serverEntries }}
+{{- if eq ($e.group | default $.Values.group.name) ($v.group | default $.Values.group.name) }}
+      {{ include "archi.name" (dict "base" $e.name "ctx" $) }}:
+{{- if $e.exchangeAudience }}
+        type: externalAuthConfigRef
+        externalAuthConfigRef:
+          name: {{ include "archi.name" (dict "base" $e.name "ctx" $) }}-exchange
+{{- else }}
+        type: discovered
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}

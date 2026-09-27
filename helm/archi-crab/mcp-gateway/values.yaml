@@ -31,7 +31,12 @@ apiVersions:
   mcpTelemetryConfig: toolhive.stacklok.dev/v1beta1
   mcpRemoteProxy: toolhive.stacklok.dev/v1beta1
   mcpAuthzConfig: toolhive.stacklok.dev/v1beta1
+  mcpExternalAuthConfig: toolhive.stacklok.dev/v1beta1
+  mcpServerEntry: toolhive.stacklok.dev/v1beta1
 
+# All groups this release manages; `group.name` below stays the DEFAULT group
+# for backends/vmcps that do not set their own `group:` key.
+groups: [crab, sst, oc-common]
 group:
   name: crab
 
@@ -57,14 +62,16 @@ backendAuth:
 # cert, no new CERN app, per-user identity intact. See templates/vmcp.yaml.
 # ---------------------------------------------------------------------------
 vmcps:
-  - name: crab-mcp-gateway
-    host: crab-mcp-gateway.cern.ch
+  - name: crab-mcp
+    host: crab-mcp.cern.ch
     # The PUBLIC client. Desktop MCP clients (Claude Code, mcp-inspector) do
     # PKCE with a localhost redirect and hold no secret; CERN mints
     # aud=<clientId>. claude mcp add --client-id crab-mcp-gateway-public ...
     audience: crab-mcp-gateway-public
   - name: crab-mcp-webui
-    host: crab-mcp-webui.cern.ch
+    # INTERNAL ONLY: no gateway listener / DNS alias. host feeds resourceUrl
+    # for OAuth discovery, which OpenWebUI never uses (system_oauth token).
+    internal: true        # reached in-cluster by OpenWebUI; no DNS alias, no cert
     # OpenWebUI's CONFIDENTIAL client -- the one users log in through, whose
     # roles (base-user, archi-admins) gate the UI. auth_type: system_oauth
     # forwards that login token as-is, so this vMCP validates its audience.
@@ -102,21 +109,47 @@ cern:
 # reached, so a policy bug looks like a broken tool, not a denied one.
 # ---------------------------------------------------------------------------
 authz:
-  enabled: false                    # enable only after the claims check
-  policies: |
-    permit(principal, action == Action::"list_tools", resource);
+  enabled: false                    # staging flips this on; prod after shadow week
+  # POLICY SETS: each renders one MCPAuthzConfig (cedar-<set>); every vMCP or
+  # remote proxy picks one via `authzSet` (default "default"). Separately
+  # manageable per gateway, one skeleton.
+  # cms-members is a CERN Application-Portal ROLE on the apps, linked to the
+  # CMS members e-group; verify a decoded token shows it in cern_roles.
+  sets:
+    default:
+      policies:
+        - |
+          permit(principal, action == Action::"list_tools", resource);
+        - |
+          // Raw SQL never reaches agents, through the bundle either (the okg
+          // entry's tools carry its workload prefix).
+          forbid(principal, action == Action::"call_tool",
+                 resource in [Tool::"okg-staging_query", Tool::"okg_query"]);
+        - |
+          // General audience: every CMS member may call every aggregated tool.
+          permit(principal, action == Action::"call_tool", resource)
+          when { principal has claim_cern_roles
+                 && principal.claim_cern_roles.contains("cms-members") };
+      # Domain tightening inside the all-in-one bundle: tool ids carry their
+      # backend prefix (crab-*_, sst-*_, compops_), so a domain rule is a
+      # forbid() on that family behind a role, e.g.:
+      #   forbid(principal, action == Action::"call_tool", resource)
+      #   when { resource.id like "compops*"
+      #          && !(principal.claim_cern_roles.contains("compops-ops")) };
+      # (verify `resource.id like` against the installed Cedar first; the
+      # fallback is an explicit `resource in [Tool::"..."]` list)
+    # sst: {policies: [...]}   # give the sst gateway its own set when needed
 
-    permit(principal, action == Action::"call_tool", resource)
-    when { resource in [Tool::"get_task_status", Tool::"check_crab_user"] };
 
-    // mirrors CRAB_MCP_SERVER__OPERATOR_USERNAMES exactly, for the shadow period
-    permit(principal, action == Action::"call_tool", resource)
-    when {
-      resource in [Tool::"count_tasks_by_status", Tool::"tasks_by_status",
-                   Tool::"tasks_by_ddmreqid", Tool::"last_failures",
-                   Tool::"last_refused"] &&
-      principal.claim_cern_upn in ["kphornsi","crabint1","belforte","vchakrav"]
-    };
+# Remote gateways. Two shapes:
+#  - serverEntries: remote joins an MCPGroup (no pods); its tools appear in
+#    every vMCP fronting that group, outgoing leg exchanged per entry. THE
+#    all-in-one mechanism -- compops rides the crab group this way.
+#  - remoteProxies: standalone proxy pod with its OWN path/endpoint + audit.
+#    Use only when a remote must be addressable outside a bundle.
+serverEntries: []
+remoteProxies: []
+
 
 redis:
   enabled: true
@@ -215,6 +248,31 @@ networkPolicy:
   apiServerPort: 6443
   
 
+# ---------------------------------------------------------------------------
+# GATEWAY SCAFFOLDS added 2026-09-16. Staging carries the live sst entries;
+# prod mirrors them once staging is verified (copy the two staging blocks here
+# with prod hosts/audience and request the prod cert + alias + CERN app).
+#
+# sst  -- the site-status team's own surface: dedicated group + vMCP that
+#         SHARES the one real site-status instance via a private ServerEntry
+#         (site-status stays in the crab group, so the CRAB Assistant keeps
+#         its site tools). No duplicate deployment.
+# okg  -- ONE instance, three consumers: the standalone endpoint
+#         archi-crab-okg-staging.cern.ch (remoteProxies, own audience) for the
+#         benchmark surface, plus a private ServerEntry in the crab group so
+#         BOTH crab vMCPs (Claude Code public client, OpenWebUI) carry okg-*_
+#         tools inside the single crab endpoint.
+# oc-common -- complement gateway (CRIC-mcp, IAM-mcp; later HTCondor,
+#         FTS): CRAB's contribution to CompOps common tooling. The group
+#         exists; add backends + a vmcps entry + the gateway listener when the
+#         first image is real:
+#   vmcps:
+#     - name: oc-common-mcp
+#       host: oc-common-mcp-staging.cern.ch
+#       audience: oc-common-mcp-public-staging
+#       group: oc-common
+#       backends: [cric, iam]
+# ---------------------------------------------------------------------------
 # Standalone remote gateways (templates/remoteproxy.yaml): own hostname,
 # audience, Cedar. Environments add entries; see values-staging.yaml (okg).
 remoteProxies: []

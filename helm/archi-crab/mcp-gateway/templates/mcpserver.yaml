@@ -12,10 +12,10 @@ metadata:
   labels:
 {{ include "archi.labels" $ | indent 4 }}
     # Group membership is how the vMCP discovers this backend.
-    toolhive.stacklok.dev/group: {{ include "archi.name" (dict "base" $.Values.group.name "ctx" $) }}
+    toolhive.stacklok.dev/group: {{ include "archi.name" (dict "base" ($srv.group | default $.Values.group.name) "ctx" $) }}
 spec:
   groupRef:
-    name: {{ include "archi.name" (dict "base" $.Values.group.name "ctx" $) }}
+    name: {{ include "archi.name" (dict "base" ($srv.group | default $.Values.group.name) "ctx" $) }}
 
   image: {{ $srv.image }}
   transport: {{ $srv.transport | default "streamable-http" }}

@@ -1,0 +1,48 @@
+{{- /*
+REMOTE GROUP MEMBERS -- the all-in-one dividend. An MCPServerEntry declares a
+remote MCP endpoint as a first-class member of an MCPGroup with ZERO pods; the
+vMCPs fronting that group call it directly, exchanging the caller's token for
+`exchangeAudience` on the outgoing leg (see the backends map in vmcp.yaml).
+Prefer this over MCPRemoteProxy when the remote only needs to appear inside an
+existing gateway; use remoteproxy.yaml when it needs its OWN endpoint/audit pod.
+*/}}
+{{- range $e := .Values.serverEntries }}
+{{- $n := include "archi.name" (dict "base" $e.name "ctx" $) }}
+{{- if $e.exchangeAudience }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpExternalAuthConfig }}
+kind: MCPExternalAuthConfig
+metadata:
+  name: {{ $n }}-exchange
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  type: tokenExchange
+  tokenExchange:
+    tokenUrl: {{ $.Values.cern.issuer }}/protocol/openid-connect/token
+    clientId: {{ $e.clientId }}
+    clientSecretRef: {name: {{ $e.secretName }}, key: client-secret}
+    audience: {{ $e.exchangeAudience }}
+{{- end }}
+---
+apiVersion: {{ $.Values.apiVersions.mcpServerEntry }}
+kind: MCPServerEntry
+metadata:
+  name: {{ $n }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "2"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  groupRef:
+    name: {{ include "archi.name" (dict "base" ($e.group | default $.Values.group.name) "ctx" $) }}
+  remoteUrl: {{ $e.url }}
+  transport: streamable-http
+{{- if $e.private }}
+  # In-cluster member shared across groups (e.g. sst -> the one real
+  # site-status instance). The whole point of allowPrivateEndpoint.
+  allowPrivateEndpoint: true
+{{- end }}
+{{- end }}

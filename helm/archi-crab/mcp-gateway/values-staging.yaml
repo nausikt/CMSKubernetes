@@ -27,18 +27,29 @@ backendAuth:
 # cert, no new CERN app, per-user identity intact. See templates/vmcp.yaml.
 # ---------------------------------------------------------------------------
 vmcps:
-  - name: crab-mcp-gateway
-    host: crab-mcp-gateway-staging.cern.ch
+  - name: crab-mcp
+    host: crab-mcp-staging.cern.ch
     # The PUBLIC client. Desktop MCP clients (Claude Code, mcp-inspector) do
     # PKCE with a localhost redirect and hold no secret; CERN mints
     # aud=<clientId>. claude mcp add --client-id crab-mcp-gateway-public-staging ...
     audience: crab-mcp-gateway-public-staging
   - name: crab-mcp-webui
-    host: crab-mcp-webui-staging.cern.ch
+    # INTERNAL ONLY: no gateway listener / DNS alias. host feeds resourceUrl
+    # for OAuth discovery, which OpenWebUI never uses (system_oauth token).
+    internal: true        # reached in-cluster by OpenWebUI; no DNS alias, no cert
     # OpenWebUI's CONFIDENTIAL client -- the one users log in through, whose
     # roles (base-user, archi-admins) gate the UI. auth_type: system_oauth
     # forwards that login token as-is, so this vMCP validates its audience.
     audience: archi-crab-staging
+  # sst: the site-status team's own surface. Prereqs once, manual: CERN public
+  # app sst-mcp-public-staging (PKCE, redirect http://localhost:8765/callback,
+  # role cms-members), cert secret sst-mcp-staging-tls in archi-crab-gw,
+  # LanDB alias on the Octavia LB.
+  - name: sst-mcp
+    host: sst-mcp-staging.cern.ch
+    audience: sst-mcp-public-staging
+    group: sst
+    backends: []   # no MCPServer members; the sst ServerEntry joins via group match
 
 # Shared by every vMCP above.
 vmcp:
@@ -167,6 +178,42 @@ networkPolicy:
     - "10.254.0.1/32"
     - "188.184.91.154/32"
   apiServerPort: 6443
+
+# Cedar ON in staging first (shadow week), prod follows.
+authz:
+  enabled: true
+
+# compops: colleague's vMCP (aud=mcp-gateway-test) as a MEMBER of the crab
+# group -- its tools appear in BOTH crab vMCPs (Claude Code and OpenWebUI)
+# behind the single crab-mcp-gateway endpoint. No pods, no extra DNS, no extra
+# OpenWebUI registration.
+# NOTE the exchange subject differs per vMCP: via crab-mcp-webui the subject
+# token has aud=archi-crab-staging (grant proven); via crab-mcp-gateway it has
+# aud=crab-mcp-gateway-public-staging -- if that path 401s on exchange, ask
+# the SSO team to extend the exchange permission to that audience too.
+serverEntries:
+  # sst: SHARES the one real site-status instance -- an in-cluster entry in
+  # the sst group pointing at the existing proxy Service. One deployment,
+  # two gateways. No auth config: the backend sits behind disableBearerAuth
+  # and the vMCP is the gate.
+  - name: sst
+    url: http://mcp-site-status-staging-proxy.archi-crab-staging.svc.cluster.local:8000/mcp
+    group: sst
+    private: true
+  # okg: the SAME instance the standalone endpoint fronts, joined to the crab
+  # group so CRAB Assistant and the crab public client get okg-*_ tools with
+  # no second registration. okg's allowedHosts already carries the mcp
+  # Service ClusterIP (ToolHive dials the resolved IP), so no okg change.
+  - name: okg
+    url: http://archi-crab-okg-staging-mcp.archi-crab-staging.svc:8765/mcp
+    group: crab
+    private: true
+  - name: compops
+    url: https://vmcp-mcp-gateway.app.cern.ch/mcp
+    group: crab
+    exchangeAudience: mcp-gateway-test
+    clientId: archi-crab-staging
+    secretName: openwebui-idp-secret
 
 # --- archi-crab-okg as its own MCP endpoint -----------------------------------
 # Manual prereqs, once: CERN public app archi-crab-okg-public-staging (PKCE,

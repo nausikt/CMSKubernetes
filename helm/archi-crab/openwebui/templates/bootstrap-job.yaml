@@ -33,6 +33,8 @@ data:
             "doc"  "Creates OpenWebUI's FIRST account, which becomes admin. Signup closes once any account exists (403), so the script checks signin first.")
       (dict "name" "tools" "weight" "1" "script" "register-tools.py"
             "doc"  "Reconciles TOOL_SERVER_CONNECTIONS via POST /api/v1/configs/tool_servers -- the whole list, replace-style; there is no PATCH.")
+      (dict "name" "model" "weight" "2" "script" "create-model.py"
+            "doc"  "Upserts the assistant model: base model, system prompt, native function calling, attached tool servers, default-model flag. Runs after tools so the tool ids exist.")
 }}
 ---
 # {{ $job.doc }}
@@ -71,6 +73,7 @@ spec:
               valueFrom: {secretKeyRef: {name: openwebui-admin, key: password}}
 {{- if eq $job.name "tools" }}
             - {name: TOOL_SERVERS_JSON, value: {{ $.Values.toolServers | toJson | quote }}}
+            - {name: MODEL_JSON, value: {{ $.Values.model | toJson | quote }}}
 {{- end }}
           command: ["python3", "/scripts/{{ $job.script }}"]
           volumeMounts: [{name: scripts, mountPath: /scripts, readOnly: true}]

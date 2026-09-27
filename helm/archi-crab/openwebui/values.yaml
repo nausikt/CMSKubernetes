@@ -56,12 +56,34 @@ toolServers:
   # Field shape is ToolServerConnection (routers/configs.py). key and config
   # have no default and must be PRESENT; config MUST be {} not null, or
   # OpenWebUI crashes at startup on `'access_control' in None`.
-  - url: "https://crab-mcp-webui.cern.ch"
+  - url: "http://vmcp-crab-mcp-webui.archi-crab.svc:4483"   # in-cluster; bearer token still validated by the vMCP
     path: "/mcp"
     type: "mcp"
     auth_type: "system_oauth"
     key: null
     config: {}
     info:
-      id: crab-mcp-gateway
+      id: crab
       enabled: true
+
+# THE ASSISTANT MODEL -- the user's entry point. Tools are attached to the
+# MODEL, not enabled per-chat: users pick "CRAB Assistant" and the wrench menu
+# is never needed. Reconciled by bootstrap-model on every sync.
+model:
+  id: crab-assistant
+  name: "CRAB Assistant"
+  base: gpt-5-luna                # must match a LiteLLM model id
+  # Which registered tool servers to attach, matched against OpenWebUI's tool
+  # ids so the exact "server:<id>" format never has to be hardcoded.
+  toolMatch: [crab]
+  default: true                   # also set as the instance default model
+  prompt: |
+    You have access to operational tools relevant to this assistant.
+    Use them when the user's request requires current external state such as
+    job status, site information, logs, transfers or submission state.
+    Do not announce routine tool calls.
+    Prefer the smallest number of tool calls necessary; when several
+    independent pieces of information are needed, call tools in parallel.
+    Preserve useful operational detail from tool results -- task names, sites,
+    states, exit codes, retry counts and URLs.
+    Do not invent state the tools did not provide.

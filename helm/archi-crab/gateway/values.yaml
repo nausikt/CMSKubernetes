@@ -26,6 +26,9 @@
 # ⚠ ALL TLS SECRETS LIVE IN THIS NAMESPACE. A listener resolves certificateRef
 #   in the GATEWAY's namespace, so all SEVEN CERN host certificates land here,
 #   not in the environment namespaces.
+#   crab-mcp-webui[-staging] has NO listener: OpenWebUI reaches that vMCP
+#   in-cluster (vmcp-crab-mcp-webui-<env>.<ns>.svc:4483), so it needs no
+#   public hostname, cert or LanDB alias.
 # =============================================================================
 
 namespace: archi-crab-gw
@@ -46,24 +49,38 @@ vip: "188.184.44.137"
 #   shared  -> only the obs namespace
 # ---------------------------------------------------------------------------
 listeners:
-  - host: crab-mcp-gateway.cern.ch
-    tlsSecret: crab-mcp-gateway-tls
+  - host: crab-mcp.cern.ch
+    tlsSecret: crab-mcp-tls
     env: prod
   - host: archi-crab.cern.ch
     tlsSecret: archi-crab-tls
     env: prod
-  - host: crab-mcp-webui.cern.ch            # second vMCP: OpenWebUI's audience
-    tlsSecret: crab-mcp-webui-tls
-    env: prod
-  - host: crab-mcp-gateway-staging.cern.ch
-    tlsSecret: crab-mcp-gateway-staging-tls
+  - host: crab-mcp-staging.cern.ch
+    tlsSecret: crab-mcp-staging-tls
     env: staging
   - host: archi-crab-staging.cern.ch
     tlsSecret: archi-crab-staging-tls
     env: staging
-  - host: crab-mcp-webui-staging.cern.ch    # second vMCP: OpenWebUI's audience
-    tlsSecret: crab-mcp-webui-staging-tls
+  # sst: the site-status team's own gateway. A listener whose tlsSecret does
+  # not exist yet goes ResolvedRefs=False WITHOUT affecting the other
+  # listeners, so these can land ahead of the cert requests. Prerequisites per
+  # hostname: (1) host cert -> Secret in archi-crab-gw, (2) LanDB alias added
+  # to the Octavia LB's landb-alias tag.
+  - host: sst-mcp.cern.ch
+    tlsSecret: sst-mcp-tls
+    env: prod
+  - host: sst-mcp-staging.cern.ch
+    tlsSecret: sst-mcp-staging-tls
     env: staging
+  # common: complement gateway (CRIC, IAM; later HTCondor, FTS) --
+  # the CRAB team's contribution to CompOps common tooling. Uncomment with the
+  # first real backend + cert + alias.
+  # - host: oc-common-mcp.cern.ch
+  #   tlsSecret: oc-common-mcp-tls
+  #   env: prod
+  # - host: oc-common-mcp-staging.cern.ch
+  #   tlsSecret: oc-common-mcp-staging-tls
+  #   env: staging
   # okg: archi-crab knowledge graph MCP (MCPRemoteProxy in mcp-gateway chart).
   # A listener whose cert Secret is missing goes ResolvedRefs=False on its own,
   # others unaffected -- safe to land before the cert.

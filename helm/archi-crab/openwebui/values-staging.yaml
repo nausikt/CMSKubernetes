@@ -24,21 +24,13 @@ persistence:
 bootstrap:
   enabled: true
 
+# ONE tool server: the crab-mcp-webui vMCP aggregates everything in the crab
+# group, compops included (MCPServerEntry) -- the all-in-one bundle.
 toolServers:
-  # The vMCP whose audience is THIS OpenWebUI's own CERN client (archi-crab-staging).
-  # auth_type: system_oauth forwards the user's login token verbatim, so it must
-  # hit the vMCP that validates that audience -- NOT crab-mcp-gateway[-staging],
-  # which validates the public client's. Both vMCPs front the same backends.
-  #
-  # Field shape is ToolServerConnection (routers/configs.py). key and config
-  # have no default and must be PRESENT; config MUST be {} not null, or
-  # OpenWebUI crashes at startup on `'access_control' in None`.
-  - url: "https://crab-mcp-webui-staging.cern.ch"
+  - url: "http://vmcp-crab-mcp-webui-staging.archi-crab-staging.svc:4483"   # in-cluster; bearer token still validated by the vMCP
     path: "/mcp"
     type: "mcp"
     auth_type: "system_oauth"
     key: null
     config: {}
-    info:
-      id: crab-mcp-gateway
-      enabled: true
+    info: {id: crab, enabled: true}

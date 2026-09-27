@@ -50,6 +50,13 @@ vmcps:
     audience: sst-mcp-public-staging
     group: sst
     backends: []   # no MCPServer members; the sst ServerEntry joins via group match
+  # okg for OpenWebUI: internal, validates OpenWebUI's own token audience, so
+  # OpenWebUI registers it as a second tool server (id okg) next to crab.
+  - name: okg-webui
+    internal: true
+    audience: archi-crab-staging
+    group: okg
+    backends: []   # the okg-mcp ServerEntry joins via group match
 
 # Shared by every vMCP above.
 vmcp:
@@ -200,13 +207,14 @@ serverEntries:
     url: http://mcp-site-status-staging-proxy.archi-crab-staging.svc.cluster.local:8000/mcp
     group: sst
     private: true
-  # okg: the SAME instance the standalone endpoint fronts, joined to the crab
-  # group so CRAB Assistant and the crab public client get okg-*_ tools with
-  # no second registration. okg's allowedHosts already carries the mcp
-  # Service ClusterIP (ToolHive dials the resolved IP), so no okg change.
-  - name: okg
+  # okg: SEPARATE from the crab bundle -- its own group, fronted for OpenWebUI
+  # by the internal okg-webui vMCP (Claude Code uses the standalone
+  # archi-crab-okg-staging.cern.ch proxy). Named okg-mcp, NOT okg: the
+  # MCPRemoteProxy is already okg-staging and the vMCP's discovery resolved
+  # the colliding name to the proxy and dropped the entry (2026-09-28).
+  - name: okg-mcp
     url: http://archi-crab-okg-staging-mcp.archi-crab-staging.svc:8765/mcp
-    group: crab
+    group: okg
     private: true
   - name: compops
     url: https://vmcp-mcp-gateway.app.cern.ch/mcp

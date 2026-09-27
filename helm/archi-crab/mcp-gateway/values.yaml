@@ -36,7 +36,7 @@ apiVersions:
 
 # All groups this release manages; `group.name` below stays the DEFAULT group
 # for backends/vmcps that do not set their own `group:` key.
-groups: [crab, sst, oc-common]
+groups: [crab, sst, oc-common, okg]
 group:
   name: crab
 
@@ -124,7 +124,7 @@ authz:
           // Raw SQL never reaches agents, through the bundle either (the okg
           // entry's tools carry its workload prefix).
           forbid(principal, action == Action::"call_tool", resource)
-          when { resource in [Tool::"okg-staging_query", Tool::"okg_query"] };
+          when { resource in [Tool::"okg-mcp-staging_query", Tool::"okg-mcp_query"] };
         - |
           // General audience: every CMS member may call every aggregated tool.
           permit(principal, action == Action::"call_tool", resource)

@@ -41,12 +41,10 @@ wait_for_webui()
 token = signin() or die("admin signin failed -- run create-admin.py first")
 
 current = (call("GET", ENDPOINT, token=token) or {}).get(KEY, [])
-by_id = {t.get("info", {}).get("id"): t for t in current if isinstance(t, dict)}
-before = set(by_id)
-for t in desired:
-    by_id[t["info"]["id"]] = t
-
-call("POST", ENDPOINT, {KEY: list(by_id.values())}, token=token)
-added = set(by_id) - before
-print(f"reconciled {len(desired)} from Git ({len(added)} new: {sorted(added) or '-'}); "
-      f"{len(by_id)} registered in total")
+before = {t.get("info", {}).get("id") for t in current if isinstance(t, dict)}
+after = {t["info"]["id"] for t in desired}
+# AUTHORITATIVE: Git's list replaces the registered one. Merging by id left a
+# renamed server (crab-mcp-gateway -> crab) registered at a dead URL.
+call("POST", ENDPOINT, {KEY: desired}, token=token)
+print(f"reconciled to Git: {sorted(after)}; removed {sorted(before - after) or '-'}; "
+      f"added {sorted(after - before) or '-'}")

@@ -80,6 +80,11 @@ model:
   # toolServers[].info.id values to attach; the job renders server:mcp:<id>.
   tools: [crab]
   default: true                   # also set as the instance default model
+  # Merged into the model's meta.capabilities (other capabilities untouched).
+  # builtin_tools off: OpenWebUI's ~35 built-ins + 99 MCP tools exceed the
+  # OpenAI 128-tool limit, and ask_user pre-empts the CRAB tools.
+  capabilities:
+    builtin_tools: false
   prompt: |
     You have access to operational tools relevant to this assistant.
     Use them when the user's request requires current external state such as

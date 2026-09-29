@@ -29,26 +29,35 @@ if missing:
         "-- the tools job must run first")
 tool_ids = [f"server:mcp:{t}" for t in wanted]
 
+# MERGE, don't overwrite: keep every meta/params field the UI or OpenWebUI set
+# (capabilities, knowledge, ...), then apply only what Git manages. A plain
+# overwrite reset "Builtin Tools" to on at every sync -> 134 tools > 128 limit.
+listed = ((call("GET", "/api/v1/models/list", token=token) or {}).get("items") or [])
+current = next((m for m in listed if m.get("id") == spec["id"]), None)
+meta = dict((current or {}).get("meta") or {})
+params = dict((current or {}).get("params") or {})
+meta.update({"profile_image_url": meta.get("profile_image_url", "/static/favicon.png"),
+             "description": spec.get("description", ""),
+             "toolIds": tool_ids})
+caps = dict(meta.get("capabilities") or {})
+caps.update(spec.get("capabilities") or {})   # e.g. builtin_tools: false
+meta["capabilities"] = caps
+params.update({"system": spec.get("prompt", ""), "function_calling": "native"})
 body = {
     "id": spec["id"],
     "name": spec["name"],
     "base_model_id": spec["base"],
-    "params": {"system": spec.get("prompt", ""), "function_calling": "native"},
-    "meta": {"profile_image_url": "/static/favicon.png",
-             "description": spec.get("description", ""),
-             "toolIds": tool_ids},
+    "params": params,
+    "meta": meta,
     "access_control": None,          # public: every signed-in user sees it
     "is_active": True,
 }
-# Workspace (custom) models live at /models/list -> {"items":[...]}. The
-# trailing-slash /models/ falls through to the SPA (HTML) on this build.
-existing = {m.get("id") for m in ((call("GET", "/api/v1/models/list", token=token) or {}).get("items") or [])}
-if spec["id"] in existing:
+if current:
     call("POST", f"/api/v1/models/model/update?id={spec['id']}", body, token=token)
-    print(f"updated model {spec['id']} tools={tool_ids}")
+    print(f"updated model {spec['id']} tools={tool_ids} capabilities={caps}")
 else:
     call("POST", "/api/v1/models/create", body, token=token)
-    print(f"created model {spec['id']} tools={tool_ids}")
+    print(f"created model {spec['id']} tools={tool_ids} capabilities={caps}")
 
 if spec.get("default"):
     try:

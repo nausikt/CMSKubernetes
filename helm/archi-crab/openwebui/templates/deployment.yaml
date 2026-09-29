@@ -66,6 +66,16 @@ spec:
             - {name: OAUTH_ROLES_CLAIM,   value: "cern_roles"}
             - {name: OAUTH_ALLOWED_ROLES, value: "base-user,crab-admin"}
             - {name: OAUTH_ADMIN_ROLES,   value: "crab-admin"}
+            # offline_access: a refresh token NOT bound to the browser SSO session
+            # (CERN SSO sessions end after 10h -> invalid_grant "Token is not active",
+            # OpenWebUI deletes the session, MCP servers get no token). Offline tokens
+            # keep tool calls working for as long as the OpenWebUI login lasts.
+            - {name: OAUTH_SCOPES, value: {{ .Values.oidc.scopes | quote }}}
+            # OAuth settings are PersistentConfig: after first boot the DB wins over
+            # env. false = always read them from env, so Git stays the source of truth.
+            - {name: ENABLE_OAUTH_PERSISTENT_CONFIG, value: "false"}
+            # No Ollama here; the default host.docker.internal:11434 only logs errors.
+            - {name: ENABLE_OLLAMA_API, value: "false"}
             - {name: DEFAULT_MODELS, value: "gpt-5-luna"}
             - {name: WEBUI_URL, value: "https://{{ .Values.host }}"}
             # Supplied, not generated. OpenWebUI writes one to .webui_secret_key

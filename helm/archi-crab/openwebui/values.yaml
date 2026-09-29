@@ -37,6 +37,9 @@ oidc:
   issuer: https://auth.cern.ch/auth/realms/cern
   clientId: archi-crab-production
   secretName: openwebui-idp-secret
+  # offline_access must be allowed for the CERN app; if login fails with
+  # invalid_scope, drop it and ask the SSO team to enable it.
+  scopes: "openid email profile offline_access"
 
 
 persistence:

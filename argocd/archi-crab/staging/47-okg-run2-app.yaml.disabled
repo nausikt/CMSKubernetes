@@ -1,0 +1,25 @@
+# archi-crab-okg run2: a PRESERVED okg instance for study, same namespace as staging, its own
+# release (fullnameOverride archi-crab-okg-run2, envs/run2/values.yaml in the instance repo:
+# revision + images pinned by hand, never by the bot). Reached at
+# archi-crab-okg-staging.cern.ch/run2/mcp (mcp-gateway remoteProxies okg-run2) and
+# /run2/akmon (the okg chart's console route, basePath /run2/akmon).
+# Rename to .yaml to enable (the root app reads *.yaml only), with okg-run2 enabled: true.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-okg-run2
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: main
+    path: helm/okg
+    helm:
+      valueFiles: [../../envs/run2/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 3, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}

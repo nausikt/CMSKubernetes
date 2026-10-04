@@ -245,3 +245,59 @@ remoteProxies:
         permit(principal, action == Action::"call_tool", resource)
         when { principal has claim_cern_roles
                && principal.claim_cern_roles.contains("cms-members") };
+
+  # --- preserved okg runs, same hostname, one path each (archi-crab-okg docs/V2-BENCH.md phase 5).
+  # Same namespace, release archi-crab-okg-runN (envs/runN in the instance repo). enabled: false
+  # until that release exists; same public app and Cedar policy as `okg` above.
+  - name: okg-run1
+    enabled: false
+    url: http://archi-crab-okg-run1-mcp.archi-crab-staging.svc:8765/mcp
+    private: true
+    host: archi-crab-okg-staging.cern.ch
+    path: /run1
+    audience: archi-crab-okg-public-staging
+    policies: &okg-policies
+      - |
+        permit(principal, action == Action::"list_tools", resource);
+      - |
+        // raw SQL never reaches agents, whoever they are
+        forbid(principal, action == Action::"call_tool", resource == Tool::"query");
+      - |
+        permit(principal, action == Action::"call_tool", resource)
+        when { principal has claim_cern_roles
+               && principal.claim_cern_roles.contains("cms-members") };
+  - name: okg-run2
+    enabled: false
+    url: http://archi-crab-okg-run2-mcp.archi-crab-staging.svc:8765/mcp
+    private: true
+    host: archi-crab-okg-staging.cern.ch
+    path: /run2
+    audience: archi-crab-okg-public-staging
+    policies: *okg-policies
+
+  # --- archi v2 benchmark fixture (archi-crab-okg v2/, release archi-v2, one environment).
+  # ONE hostname archi-crab-v2.cern.ch, a path per tool family; the MCP servers are sidecars of
+  # the archi-v2 data-manager pod. Same public app as okg: one login covers v2 and v3 for the
+  # benchmark harness. enabled: false until the archi-v2 app is synced (V2-BENCH phase 4).
+  - name: v2-grep
+    enabled: false
+    url: http://archi-v2-mcp-grep.archi-crab-staging.svc:8081/mcp
+    private: true
+    host: archi-crab-v2.cern.ch
+    path: /grep
+    audience: archi-crab-okg-public-staging
+    policies: &v2-policies
+      - |
+        permit(principal, action == Action::"list_tools", resource);
+      - |
+        permit(principal, action == Action::"call_tool", resource)
+        when { principal has claim_cern_roles
+               && principal.claim_cern_roles.contains("cms-members") };
+  - name: v2-vector
+    enabled: false
+    url: http://archi-v2-mcp-vector.archi-crab-staging.svc:8082/mcp
+    private: true
+    host: archi-crab-v2.cern.ch
+    path: /vectorstore
+    audience: archi-crab-okg-public-staging
+    policies: *v2-policies

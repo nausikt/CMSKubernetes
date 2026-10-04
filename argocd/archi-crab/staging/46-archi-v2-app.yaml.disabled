@@ -1,0 +1,23 @@
+# archi v2 benchmark fixture (headless archi data-manager + two MCP sidecars). Rendered FROM
+# the instance repo (nausikt/archi-crab-okg v2/, docs/V2-BENCH.md); ONE environment, so it
+# lives here next to okg staging. Wave 4: before mcp-gateway (5), whose v2-grep / v2-vector
+# MCPRemoteProxies front its sidecar Services. Prerequisite: Secret archi-v2 (V2-BENCH 2.2).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-v2
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: main
+    path: v2/helm/archi-v2
+    helm:
+      valueFiles: [../../envs/bench/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 3, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}

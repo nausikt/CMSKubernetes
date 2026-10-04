@@ -6,9 +6,23 @@ and Cedar policy -- no vMCP, no group. Used first for archi-crab-okg
 Shapes verified 2026-09-16 (kubectl explain mcpremoteproxy.spec): remoteUrl,
 transport, proxyPort, oidcConfigRef, externalAuthConfigRef, allowPrivateEndpoint.
 All v1beta1; shapes confirmed by server dry-run 2026-09-21. Still gated: the proxy Service name.
+
+PATHS (2026-10-04). An entry may set `path` (e.g. /run1, /grep): several proxies then share
+ONE hostname, one path prefix each -- no LanDB alias, cert or listener per endpoint:
+  https://<host><path>/mcp                                   -> this proxy's /mcp (prefix rewritten away)
+  https://<host>/.well-known/oauth-protected-resource<path>/mcp -> this proxy's /.well-known/oauth-protected-resource
+The second rule is RFC 9728 path-aware discovery (what MCP clients try first for a resource
+that has a path); resourceUrl carries the full public URL, so the document's `resource` is
+what the client connected to. An entry WITHOUT `path` keeps the catch-all `/` rule; Gateway
+API's longest-prefix match lets path entries (and other charts' routes, e.g. the okg
+console at /akmon) coexist with it on the same hostname.
+`enabled: false` keeps an entry in values without rendering it (an upstream not deployed yet).
 */}}
 {{- range $p := .Values.remoteProxies }}
+{{- if ne $p.enabled false }}
 {{- $n := include "archi.name" (dict "base" $p.name "ctx" $) }}
+{{- $path := ($p.path | default "") | trimSuffix "/" }}
+{{- $svc := $p.service | default (printf "mcp-%s-remote-proxy" $n) }}
 ---
 apiVersion: {{ $.Values.apiVersions.mcpOIDCConfig }}
 kind: MCPOIDCConfig
@@ -65,7 +79,7 @@ spec:
   oidcConfigRef:
     name: {{ include "archi.name" (dict "base" (printf "cern-%s" $p.name) "ctx" $) }}
     audience: {{ $p.audience | quote }}       # required on the ref (dry-run confirmed)
-    resourceUrl: "https://{{ $p.host }}/mcp"  # OAuth discovery for Claude Code / inspector
+    resourceUrl: "https://{{ $p.host }}{{ $path }}/mcp"  # OAuth discovery for Claude Code / inspector
 {{- if $p.policies }}
   authzConfigRef:
     name: {{ $n }}-cedar
@@ -88,8 +102,29 @@ spec:
     - {name: archi-crab, namespace: archi-crab-gw}
   hostnames: [{{ $p.host | quote }}]
   rules:
+{{- if $path }}
+    - matches:
+        - path: {type: Exact, value: "/.well-known/oauth-protected-resource{{ $path }}/mcp"}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: {type: ReplaceFullPath, replaceFullPath: /.well-known/oauth-protected-resource}
+      backendRefs:
+        - {name: {{ $svc }}, port: 8080}
+    - matches:
+        - path: {type: PathPrefix, value: {{ $path | quote }}}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: {type: ReplacePrefixMatch, replacePrefixMatch: /}
+      backendRefs:
+        - {name: {{ $svc }}, port: 8080}
+      timeouts: {backendRequest: 3600s, request: 3600s}
+{{- else }}
     - backendRefs:
-        - name: {{ $p.service | default (printf "mcp-%s-remote-proxy" $n) }}   # operator naming, confirmed 2026-09-21
+        - name: {{ $svc }}   # operator naming, confirmed 2026-09-21
           port: 8080
       timeouts: {backendRequest: 3600s, request: 3600s}
+{{- end }}
+{{- end }}
 {{- end }}

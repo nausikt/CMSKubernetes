@@ -278,9 +278,10 @@ remoteProxies:
   # --- archi v2 benchmark fixture (archi-crab-okg v2/, release archi-v2, one environment).
   # ONE hostname archi-crab-v2.cern.ch, a path per tool family; the MCP servers are sidecars of
   # the archi-v2 data-manager pod. Same public app as okg: one login covers v2 and v3 for the
-  # benchmark harness. enabled: false until the archi-v2 app is synced (V2-BENCH phase 4).
+  # benchmark harness. Enabled 2026-10-05 (V2-BENCH phase 4): archi-v2 runs with mcp.auth none,
+  # so these proxies are the only gate; its NetworkPolicy admits only toolhive: "true" pods.
   - name: v2-grep
-    enabled: false
+    enabled: true
     url: http://archi-v2-mcp-grep.archi-crab-staging.svc:8081/mcp
     private: true
     host: archi-crab-v2.cern.ch
@@ -294,7 +295,7 @@ remoteProxies:
         when { principal has claim_cern_roles
                && principal.claim_cern_roles.contains("cms-members") };
   - name: v2-vector
-    enabled: false
+    enabled: true
     url: http://archi-v2-mcp-vector.archi-crab-staging.svc:8082/mcp
     private: true
     host: archi-crab-v2.cern.ch

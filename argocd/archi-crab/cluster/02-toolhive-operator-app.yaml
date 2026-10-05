@@ -28,7 +28,13 @@ spec:
     helm:
       valuesObject:
         operator:
-          replicaCount: 1                    # raise only with >=2 schedulable nodes
+          # PAUSED (0) 2026-10-05: the 3.5 GiB master is out of memory (kube-apiserver ~1.7 GiB,
+          # AUDIT-DEPLOY E); the operator crash-loops on lease timeouts (676 restarts) and each
+          # restart re-LISTs every watched kind. Running MCPServers / vMCPs / remote proxies keep
+          # serving without it. Set 1 to apply a ToolHive change (new proxy, run1, edits), wait for
+          # the CRs to go Ready, set 0 again. Back to 1 for good once the master is resized.
+          # Shared by staging AND prod: pausing pauses reconciles for both.
+          replicaCount: 0
           rbac: {scope: cluster}
   destination: {server: https://kubernetes.default.svc, namespace: toolhive-system}
   syncPolicy:

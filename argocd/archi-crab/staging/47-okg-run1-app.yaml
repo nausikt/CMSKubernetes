@@ -1,0 +1,29 @@
+# archi-crab-okg run1: okg v3 built FROM SCRATCH on its own volumes with the 2026-10-01 evaluation's pins,
+# then FROZEN (archi-crab-okg docs/RUN1-FREEZE.md). Same namespace as staging, its own release
+# (fullnameOverride archi-crab-okg-run1, envs/run1/values.yaml in the instance repo: images and
+# revision pinned by hand, never by the bot). Built with frozen.enabled false (bootstrap ingests
+# and publishes); frozen.enabled true afterwards: no worker, no bootstrap, the MCP only.
+# Needs Secret okg-archi-crab-run1 (DSN host archi-crab-okg-run1-postgres) BEFORE this syncs.
+# Reached at archi-crab-okg-staging.cern.ch/run1/mcp (mcp-gateway remoteProxies okg-run1).
+# No console yet (/run1/akmon waits for the console series, V2-BENCH phase 5 step 4).
+# targetRevision is the TAG okg-run1, never main: later chart changes on main never re-render
+# run1. The tag moves only on purpose (build -> frozen; RUN1-FREEZE.md steps 1 and 7).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-okg-run1
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: okg-run1   # a tag, not a branch (see header)
+    path: helm/okg
+    helm:
+      valueFiles: [../../envs/run1/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 3, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}

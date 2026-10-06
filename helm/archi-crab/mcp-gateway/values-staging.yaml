@@ -249,8 +249,10 @@ remoteProxies:
   # --- preserved okg runs, same hostname, one path each (archi-crab-okg docs/V2-BENCH.md phase 5).
   # Same namespace, release archi-crab-okg-runN (envs/runN in the instance repo). enabled: false
   # until that release exists; same public app and Cedar policy as `okg` above.
+  # run1 = okg v3, built fresh then frozen (archi-crab-okg docs/RUN1-FREEZE.md); enabled 2026-10-06.
+  # Its -mcp Service has the fixed ClusterIP 10.254.0.201 (chart delta 11), listed in its allowedHosts.
   - name: okg-run1
-    enabled: false
+    enabled: true
     url: http://archi-crab-okg-run1-mcp.archi-crab-staging.svc:8765/mcp
     private: true
     host: archi-crab-okg-staging.cern.ch

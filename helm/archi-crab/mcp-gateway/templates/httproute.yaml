@@ -6,6 +6,7 @@ FAMILY costs one, because it means one more audience (see vmcp.yaml).
 {{- range $v := .Values.vmcps }}
 {{- if not $v.internal }}
 {{- $n := include "archi.name" (dict "base" $v.name "ctx" $) }}
+{{- $path := include "archi.vmcpPath" (dict "v" $v "ctx" $) }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -23,6 +24,30 @@ spec:
   hostnames:
     - {{ $v.host | quote }}
   rules:
+{{- if $path }}
+    # RELEASE path (vmcp.yaml): RFC 9728 path-aware discovery for THIS vMCP,
+    # then <path>/... with the prefix rewritten away (the vMCP serves /mcp).
+    # Longest-prefix match keeps the path-less "latest" vMCP's catch-all intact.
+    - matches:
+        - path: {type: Exact, value: "/.well-known/oauth-protected-resource{{ $path }}/mcp"}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: {type: ReplaceFullPath, replaceFullPath: /.well-known/oauth-protected-resource}
+      backendRefs:
+        - {name: vmcp-{{ $n }}, port: {{ $.Values.vmcp.servicePort }}}
+    - matches:
+        - path: {type: PathPrefix, value: {{ $path | quote }}}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: {type: ReplacePrefixMatch, replacePrefixMatch: /}
+      backendRefs:
+        - {name: vmcp-{{ $n }}, port: {{ $.Values.vmcp.servicePort }}}
+      timeouts:
+        backendRequest: {{ $.Values.gateway.timeout }}
+        request: {{ $.Values.gateway.timeout }}
+{{- else }}
     - backendRefs:
         # The operator names the Service vmcp-<cr-name> and assigns port 4483
         # (same across instances so far -- your colleague's Route hardcodes it
@@ -34,5 +59,6 @@ spec:
       timeouts:
         backendRequest: {{ $.Values.gateway.timeout }}
         request: {{ $.Values.gateway.timeout }}
+{{- end }}
 {{- end }}
 {{- end }}

@@ -5,6 +5,10 @@ namespace: archi-crab-staging
 group:
   name: crab
 
+# Staging's groups (the base list is prod's). sst retired 2026-10-16: the SST team's
+# own triage MCP replaces the sst-mcp surface; site-status-staging stays in crab.
+groups: [crab, oc-common, okg]
+
 backendAuth:
   # FALSE deliberately. The vMCP cannot authenticate to backends that enforce
   # their own OIDC: its health checks and capability aggregation carry no user
@@ -26,6 +30,31 @@ backendAuth:
 # exchange). So each client family gets its own vMCP: one extra hostname and
 # cert, no new CERN app, per-user identity intact. See templates/vmcp.yaml.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# BUNDLE RELEASES (2026-10-17): the okg engine x corpus model for the crab bundle.
+#   crab-mcp-staging.cern.ch/mcp                  latest  (bundles.latest)
+#   crab-mcp-staging.cern.ch/releases/<v>/mcp     one vMCP per release (`release: <v>`)
+# A release = ONE MCPGroup + ONE Cedar set (+ the vMCP's backends list). vMCPs carry
+# `release:` and inherit all three, so latest, the release path and OpenWebUI cannot drift.
+#   PROMOTE   change `latest` (one line): crab-mcp and crab-mcp-webui follow it.
+#   NEW       a new group + Cedar set + releases entry + one `release: <v>` vMCP.
+#   FREEZE    pin the group's images by digest, render, copy the vMCP's annotation
+#             archi-crab.cern.ch/bundle-fingerprint into `frozen:`. From then on the
+#             chart refuses to render if anything the release's callers get changes.
+# Shared members (compops, later sst-triage) are external: a freeze covers what WE run.
+# ---------------------------------------------------------------------------
+bundles:
+  latest: v0.1.0
+  releases:
+    v0.1.0:
+      # EXACTLY today's bundle: crab + site-status (MCPServers) + compops (ServerEntry,
+      # token exchange), Cedar `default`. Benchmark baseline -- frozen, never edited.
+      group: crab
+      authzSet: default          # today's Cedar set, unchanged (values.yaml authz.sets.default)
+      # set by runbook F3 (after F1 pins the images); "" = not yet enforced
+      frozen: "fcb21a4c7c00fa2f"
+
 vmcps:
   - name: crab-mcp
     host: crab-mcp-staging.cern.ch
@@ -33,6 +62,11 @@ vmcps:
     # PKCE with a localhost redirect and hold no secret; CERN mints
     # aud=<clientId>. claude mcp add --client-id crab-mcp-gateway-public-staging ...
     audience: crab-mcp-gateway-public-staging
+    release: latest
+  - name: crab-mcp-v0-1-0
+    host: crab-mcp-staging.cern.ch      # serves /releases/v0.1.0/mcp
+    audience: crab-mcp-gateway-public-staging
+    release: v0.1.0
   - name: crab-mcp-webui
     # INTERNAL ONLY: no gateway listener / DNS alias. host feeds resourceUrl
     # for OAuth discovery, which OpenWebUI never uses (system_oauth token).
@@ -41,15 +75,8 @@ vmcps:
     # roles (base-user, archi-admins) gate the UI. auth_type: system_oauth
     # forwards that login token as-is, so this vMCP validates its audience.
     audience: archi-crab-staging
-  # sst: the site-status team's own surface. Prereqs once, manual: CERN public
-  # app sst-mcp-public-staging (PKCE, redirect http://localhost:8765/callback,
-  # role cms-members), cert secret sst-mcp-staging-tls in archi-crab-gw,
-  # LanDB alias on the Octavia LB.
-  - name: sst-mcp
-    host: sst-mcp-staging.cern.ch
-    audience: sst-mcp-public-staging
-    group: sst
-    backends: []   # no MCPServer members; the sst ServerEntry joins via group match
+    release: latest      # OpenWebUI's CRAB Assistant follows latest
+  # sst-mcp (the site-status team's own surface) retired 2026-10-16.
   # okg for OpenWebUI: internal, validates OpenWebUI's own token audience, so
   # OpenWebUI registers it as a second tool server (id okg) next to crab.
   - name: okg-webui
@@ -82,9 +109,6 @@ cern:
   clientId: "crab-mcp-gateway-public-staging"
   scopes: [openid, profile, email]
 
-authz:
-  enabled: false
-
 telemetry:
   enabled: true
   endpoint: otel-collector-staging.archi-crab-staging.svc.cluster.local:4318
@@ -97,7 +121,7 @@ gateway:
 
 servers:
   - name: site-status
-    image: registry.cern.ch/cmscrab/site-status-mcp:preprod-1789131871
+    image: registry.cern.ch/cmscrab/site-status-mcp@sha256:8c8b29a8bf40ba92b60ed7ec53985d4df0b12fd53bf0ffa93309a00a353aac2f  # was :preprod-1789131871
     transport: streamable-http
     port: 8000
     mcpPath: /mcp
@@ -119,7 +143,7 @@ servers:
       backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
   - name: crab
-    image: registry.cern.ch/cmscrab/crab-mcp:preprod-1789131706
+    image: registry.cern.ch/cmscrab/crab-mcp@sha256:5e7c0e0de1d0847cc4bae2b3112b53214baeffe470ff095c708cd1fda0ad94fb  # was :preprod-1789131706
     transport: streamable-http
     port: 8000
     mcpPath: /mcp
@@ -199,14 +223,6 @@ authz:
 # aud=crab-mcp-gateway-public-staging -- if that path 401s on exchange, ask
 # the SSO team to extend the exchange permission to that audience too.
 serverEntries:
-  # sst: SHARES the one real site-status instance -- an in-cluster entry in
-  # the sst group pointing at the existing proxy Service. One deployment,
-  # two gateways. No auth config: the backend sits behind disableBearerAuth
-  # and the vMCP is the gate.
-  - name: sst
-    url: http://mcp-site-status-staging-proxy.archi-crab-staging.svc.cluster.local:8000/mcp
-    group: sst
-    private: true
   # okg: SEPARATE from the crab bundle -- its own group, fronted for OpenWebUI
   # by the internal okg-webui vMCP (Claude Code uses the standalone
   # archi-crab-okg-staging.cern.ch proxy). Named okg-mcp, NOT okg: the

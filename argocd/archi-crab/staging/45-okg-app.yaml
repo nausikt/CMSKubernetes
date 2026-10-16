@@ -1,5 +1,8 @@
-# archi-crab-okg, staging. Rendered FROM the instance repo; this file only points
-# at it. Application name == fullnameOverride in envs/staging/values.yaml.
+# archi-crab-okg, staging, instance A = okg engine 43f459c6 x corpus v0.1.0 (archi-crab-okg
+# releases/matrix.yaml). Served at /releases/43f459c6/v0.1.0/mcp and, while it is "latest",
+# at /mcp. Rendered FROM the instance repo at an immutable release TAG (docs/RELEASES.md);
+# this file only points at it. Application name == fullnameOverride (kept from the
+# pre-release layout: renaming it would rename its volumes).
 # Wave 4: after platform (namespace) and before mcp-gateway (5), whose okg
 # MCPRemoteProxy fronts this app's mcp Service.
 apiVersion: argoproj.io/v1alpha1
@@ -13,10 +16,10 @@ spec:
   project: archi-crab
   source:
     repoURL: https://github.com/nausikt/archi-crab-okg.git
-    targetRevision: main
+    targetRevision: okg/releases/43f459c6/v0.1.0   # a tag, never a branch
     path: helm/okg
     helm:
-      valueFiles: [../../envs/staging/values.yaml]
+      valueFiles: [../../envs/releases/43f459c6/v0.1.0/values.yaml]
   destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
   syncPolicy:
     automated: {prune: true, selfHeal: true}

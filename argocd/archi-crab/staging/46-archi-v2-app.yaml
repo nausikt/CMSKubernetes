@@ -1,6 +1,7 @@
-# archi v2 benchmark fixture (headless archi data-manager + two MCP sidecars). Rendered FROM
-# the instance repo (nausikt/archi-crab-okg v2/, docs/V2-BENCH.md); ONE environment, so it
-# lives here next to okg staging. Wave 4: before mcp-gateway (5), whose v2-grep / v2-vector
+# archi v2 benchmark fixture (headless archi data-manager + two MCP sidecars), corpus v0.1.0
+# (archi-crab-okg releases/matrix.yaml): /{grep,vectorstore}/releases/v0.1.0/mcp and, while it
+# is "latest", /{grep,vectorstore}/mcp. Rendered FROM the instance repo at an immutable release
+# TAG (docs/RELEASES.md, V2-BENCH.md); it lives here next to okg staging. Wave 4: before mcp-gateway (5), whose v2-grep / v2-vector
 # MCPRemoteProxies front its sidecar Services. Prerequisite: Secret archi-v2 (V2-BENCH 2.2).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -13,10 +14,10 @@ spec:
   project: archi-crab
   source:
     repoURL: https://github.com/nausikt/archi-crab-okg.git
-    targetRevision: main
+    targetRevision: v2/releases/v0.1.0   # a tag, never a branch
     path: v2/helm/archi-v2
     helm:
-      valueFiles: [../../envs/bench/values.yaml]
+      valueFiles: [../../envs/releases/v0.1.0/values.yaml]
   destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
   syncPolicy:
     automated: {prune: true, selfHeal: true}

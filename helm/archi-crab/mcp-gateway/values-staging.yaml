@@ -229,34 +229,17 @@ serverEntries:
 # archi-crab-okg-staging-tls in archi-crab-gw, alias archi-crab-okg-staging on
 # the Octavia LB's landb-alias tag. The okg instance is deployed by the Argo app
 # archi-crab-okg-staging (argocd/archi-crab/staging/45-okg-app.yaml).
+# RELEASES (archi-crab-okg releases/matrix.yaml, docs/RELEASES.md). One proxy per released
+# instance at /releases/<engine>/<corpus> (okg) or /<family>/releases/<corpus> (v2). The
+# path-less `okg` and the /grep, /vectorstore entries are POINTERS to the latest instance: thin
+# proxies of their own (the OAuth resource URL must equal the dialled URL), never a second
+# instance. Moving "latest" = changing a pointer's `url:`.
 remoteProxies:
+  # POINTER: staging "latest" (/mcp) -> A (43f459c6 x v0.1.0) today, D (v0.2.0-rc1 x v0.2.0-rc1) later.
   - name: okg
     url: http://archi-crab-okg-staging-mcp.archi-crab-staging.svc:8765/mcp
     private: true
     host: archi-crab-okg-staging.cern.ch
-    audience: archi-crab-okg-public-staging
-    policies:
-      - |
-        permit(principal, action == Action::"list_tools", resource);
-      - |
-        // raw SQL never reaches agents, whoever they are
-        forbid(principal, action == Action::"call_tool", resource == Tool::"query");
-      - |
-        permit(principal, action == Action::"call_tool", resource)
-        when { principal has claim_cern_roles
-               && principal.claim_cern_roles.contains("cms-members") };
-
-  # --- preserved okg runs, same hostname, one path each (archi-crab-okg docs/V2-BENCH.md phase 5).
-  # Same namespace, release archi-crab-okg-runN (envs/runN in the instance repo). enabled: false
-  # until that release exists; same public app and Cedar policy as `okg` above.
-  # run1 = okg v3, built fresh then frozen (archi-crab-okg docs/RUN1-FREEZE.md); enabled 2026-10-06.
-  # Its -mcp Service has the fixed ClusterIP 10.254.0.201 (chart delta 11), listed in its allowedHosts.
-  - name: okg-run1
-    enabled: true
-    url: http://archi-crab-okg-run1-mcp.archi-crab-staging.svc:8765/mcp
-    private: true
-    host: archi-crab-okg-staging.cern.ch
-    path: /run1
     audience: archi-crab-okg-public-staging
     policies: &okg-policies
       - |
@@ -268,12 +251,15 @@ remoteProxies:
         permit(principal, action == Action::"call_tool", resource)
         when { principal has claim_cern_roles
                && principal.claim_cern_roles.contains("cms-members") };
-  - name: okg-run2
-    enabled: false
-    url: http://archi-crab-okg-run2-mcp.archi-crab-staging.svc:8765/mcp
+
+  # run1 (okg v3, /run1) retired 2026-10-16 with its app and volumes (archi-crab-okg RELEASES 0.4).
+  # A: okg engine 43f459c6 x corpus v0.1.0 (the instance staging built on 2026-10-06)
+  - name: okg-43f459c6-v0-1-0
+    enabled: true
+    url: http://archi-crab-okg-staging-mcp.archi-crab-staging.svc:8765/mcp
     private: true
     host: archi-crab-okg-staging.cern.ch
-    path: /run2
+    path: /releases/43f459c6/v0.1.0
     audience: archi-crab-okg-public-staging
     policies: *okg-policies
 
@@ -282,6 +268,7 @@ remoteProxies:
   # the archi-v2 data-manager pod. Same public app as okg: one login covers v2 and v3 for the
   # benchmark harness. Enabled 2026-10-05 (V2-BENCH phase 4): archi-v2 runs with mcp.auth none,
   # so these proxies are the only gate; its NetworkPolicy admits only toolhive: "true" pods.
+  # POINTERS: v2 "latest" (/grep/mcp, /vectorstore/mcp) -> corpus v0.1.0 today, v0.2.0-rc1 later.
   - name: v2-grep
     enabled: true
     url: http://archi-v2-mcp-grep.archi-crab-staging.svc:8081/mcp
@@ -302,5 +289,22 @@ remoteProxies:
     private: true
     host: archi-crab-v2.cern.ch
     path: /vectorstore
+    audience: archi-crab-okg-public-staging
+    policies: *v2-policies
+  # v2 x corpus v0.1.0 (release archi-v2, built 2026-10-05)
+  - name: v2-grep-v0-1-0
+    enabled: true
+    url: http://archi-v2-mcp-grep.archi-crab-staging.svc:8081/mcp
+    private: true
+    host: archi-crab-v2.cern.ch
+    path: /grep/releases/v0.1.0
+    audience: archi-crab-okg-public-staging
+    policies: *v2-policies
+  - name: v2-vector-v0-1-0
+    enabled: true
+    url: http://archi-v2-mcp-vector.archi-crab-staging.svc:8082/mcp
+    private: true
+    host: archi-crab-v2.cern.ch
+    path: /vectorstore/releases/v0.1.0
     audience: archi-crab-okg-public-staging
     policies: *v2-policies

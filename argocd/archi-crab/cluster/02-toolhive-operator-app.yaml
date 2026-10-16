@@ -35,7 +35,8 @@ spec:
           # the CRs to go Ready, set 0 again. Back to 1 for good once the master is resized.
           # Shared by staging AND prod: pausing pauses reconciles for both.
           # 0 again 2026-10-06 once the okg-run1 remote proxy was Ready (archi-crab-okg RUN1-FREEZE.md step 5).
-          replicaCount: 0
+          # 1 on 2026-10-16 for the release-path proxies (archi-crab-okg docs/RELEASES.md 0.4); 0 again after.
+          replicaCount: 1
           rbac: {scope: cluster}
   destination: {server: https://kubernetes.default.svc, namespace: toolhive-system}
   syncPolicy:

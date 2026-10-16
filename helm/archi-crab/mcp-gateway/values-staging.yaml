@@ -271,6 +271,16 @@ remoteProxies:
     path: /releases/v0.2.0-rc1/v0.1.0
     audience: archi-crab-okg-public-staging
     policies: *okg-policies
+  # dev slot: okg `dev`, re-pinned weekly (engine dev-<week>) x the newest corpus. STAGING ONLY.
+  # Fixed Service and path; the instance behind them is rebuilt every week (RELEASES "Weekly dev slot").
+  - name: okg-dev
+    enabled: true
+    url: http://archi-crab-okg-dev-mcp.archi-crab-staging.svc:8765/mcp
+    private: true
+    host: archi-crab-okg-staging.cern.ch
+    path: /releases/dev
+    audience: archi-crab-okg-public-staging
+    policies: *okg-policies
 
   # --- archi v2 benchmark fixture (archi-crab-okg v2/, release archi-v2, one environment).
   # ONE hostname archi-crab-v2.cern.ch, a path per tool family; the MCP servers are sidecars of

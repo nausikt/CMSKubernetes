@@ -7,7 +7,7 @@ group:
 
 # Staging's groups (the base list is prod's). sst retired 2026-10-16: the SST team's
 # own triage MCP replaces the sst-mcp surface; site-status-staging stays in crab.
-groups: [crab, oc-common, okg]
+groups: [crab, crab-operator, oc-common, okg]
 
 backendAuth:
   # FALSE deliberately. The vMCP cannot authenticate to backends that enforce
@@ -45,8 +45,16 @@ backendAuth:
 # Shared members (compops, later sst-triage) are external: a freeze covers what WE run.
 # ---------------------------------------------------------------------------
 bundles:
-  latest: v0.1.0
+  latest: v0.2.0-rc1-operator
   releases:
+    v0.2.0-rc1-operator:
+      # = v0.1.0 + the revamped crab-mcp image (servers: crab-op) + sst-triage. Same Cedar
+      # (`default`). site-status is v0.1.0's instance (entry); compops and sst-triage are
+      # third parties reached by token exchange: each user sees and calls what THEIR
+      # permissions there allow, nothing decided here.
+      group: crab-operator
+      authzSet: default
+      backends: [crab-op]       # the only MCPServer member; the rest are ServerEntries
     v0.1.0:
       # EXACTLY today's bundle: crab + site-status (MCPServers) + compops (ServerEntry,
       # token exchange), Cedar `default`. Benchmark baseline -- frozen, never edited.
@@ -63,6 +71,10 @@ vmcps:
     # aud=<clientId>. claude mcp add --client-id crab-mcp-gateway-public-staging ...
     audience: crab-mcp-gateway-public-staging
     release: latest
+  - name: crab-mcp-v0-2-0-rc1-operator
+    host: crab-mcp-staging.cern.ch      # serves /releases/v0.2.0-rc1-operator/mcp
+    audience: crab-mcp-gateway-public-staging
+    release: v0.2.0-rc1-operator
   - name: crab-mcp-v0-1-0
     host: crab-mcp-staging.cern.ch      # serves /releases/v0.1.0/mcp
     audience: crab-mcp-gateway-public-staging
@@ -75,7 +87,7 @@ vmcps:
     # roles (base-user, archi-admins) gate the UI. auth_type: system_oauth
     # forwards that login token as-is, so this vMCP validates its audience.
     audience: archi-crab-staging
-    release: latest      # OpenWebUI's CRAB Assistant follows latest
+    release: v0.1.0      # OpenWebUI stays on v0.1.0 until rc1 fits its 128-tool limit
   # sst-mcp (the site-status team's own surface) retired 2026-10-16.
   # okg for OpenWebUI: internal, validates OpenWebUI's own token audience, so
   # OpenWebUI registers it as a second tool server (id okg) next to crab.
@@ -177,6 +189,32 @@ servers:
       proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
       backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
 
+  # crab-mcp for release v0.2.0-rc1-operator ONLY (group crab-operator): `crab` above with
+  # its own image. Starts on v0.1.0's digest; BUMP = change the digest on the marked line.
+  # Name crab-op != crab: workload names are unique, so rc1's tools are crab-op-staging_*.
+  - name: crab-op
+    group: crab-operator
+    image: registry.cern.ch/cmscrab/crab-mcp@sha256:5e7c0e0de1d0847cc4bae2b3112b53214baeffe470ff095c708cd1fda0ad94fb   # <- rc1 crab-mcp image (bump here)
+    transport: streamable-http
+    port: 8000
+    mcpPath: /mcp
+    writablePaths: [/tmp]
+    envPrefix: CRAB_MCP
+    operatorUsernames: "kphornsi,crabint1,belforte,vchakrav,demo"   # same as crab (same caveat)
+    disableBearerAuth: true                                         # same as crab (same caveat)
+    env:
+      - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb.cern.ch/crabserver/prod"}
+      - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}
+      - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
+      - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-certs/igtf.pem"}
+      - {name: CRAB_MCP_CRAB__VERIFY_TLS, value: "true"}
+    secretMounts:
+      - {name: crab-robot-cert, mountPath: /data/certs,    defaultMode: 0400}
+      - {name: igtf-bundle,     mountPath: /etc/grid-certs, defaultMode: 0444}
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+
   # DEFERRED: htcondor-idtokens secret not yet available (/data/certs/tokens.d).
   # Re-enable with the secret. Needs egress 9620 to CERN *and* FNAL when
   # NetworkPolicy is turned on, and has no OIDC block of its own (F60).
@@ -238,6 +276,33 @@ serverEntries:
     exchangeAudience: mcp-gateway-test
     clientId: archi-crab-staging
     secretName: openwebui-idp-secret
+
+  # --- group crab-operator = release v0.2.0-rc1-operator (crab-op is a server above).
+  # Entry names differ from v0.1.0's workloads (names are unique; discovery drops a
+  # collision, okg-mcp 2026-09-28), so rc1's tools are site-status-op-staging_*,
+  # compops-op-staging_*, sst-triage-staging_*.
+  - name: site-status-op            # v0.1.0's site-status instance, shared
+    url: http://mcp-site-status-staging-proxy.archi-crab-staging.svc.cluster.local:8000/mcp
+    group: crab-operator
+    private: true
+  - name: compops-op                # same third party, same exchange as compops
+    url: https://vmcp-mcp-gateway.app.cern.ch/mcp
+    group: crab-operator
+    exchangeAudience: mcp-gateway-test
+    clientId: archi-crab-staging
+    secretName: openwebui-idp-secret
+  # sst-triage: the SST team's operator-grade MCP -- NOT a replacement for site-status.
+  # Wired exactly like compops: the caller's token is exchanged (RFC 8693) for
+  # aud=cms-sst-triage-mcp-cli by crab-mcp-gateway-staging, the requester SST granted.
+  # SST sees the real user (cern_upn, its own roles) and alone decides which tools that
+  # user gets and may call; ToolHive v0.47.0 aggregates per user, so someone SST does not
+  # admit simply has no sst-triage tools. Secret crab-mcp-gateway-idp: runbook step 3.
+  - name: sst-triage
+    url: https://cms-sst-triage-mcp.app.cern.ch/mcp
+    group: crab-operator
+    exchangeAudience: cms-sst-triage-mcp-cli
+    clientId: crab-mcp-gateway-staging
+    secretName: toolhive-idp-secret
 
 # --- archi-crab-okg as its own MCP endpoint -----------------------------------
 # Manual prereqs, once: CERN public app archi-crab-okg-public-staging (PKCE,

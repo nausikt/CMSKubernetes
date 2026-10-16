@@ -1,0 +1,24 @@
+# archi-crab-okg, staging, SLOT dev = okg `dev` re-pinned weekly (engine dev-<ISO week>) x the
+# newest released corpus (archi-crab-okg releases/matrix.yaml). Served at /releases/dev/mcp. STAGING ONLY.
+# The app, release, volumes and Secret stay; every week targetRevision moves (docs/RELEASES.md
+# "Weekly dev slot"): BUILDING = the merge sha of that week's build PR (D3), LIVE = the tag
+# okg/releases/dev-<week>/<corpus> (D6). Needs Secret okg-archi-crab-dev BEFORE the first sync (D0).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-okg-dev
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: 2d7a30d843df9ba7cc092c2fed62b51c6da17b86   # building: the merge sha; live: the deploy tag. Never a branch.
+    path: helm/okg
+    helm:
+      valueFiles: [../../envs/releases/dev/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 3, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}

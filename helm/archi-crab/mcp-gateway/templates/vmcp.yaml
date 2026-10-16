@@ -1,5 +1,10 @@
 {{- /*
-ONE VirtualMCPServer PER AUDIENCE, all fronting the same MCPGroup.
+ONE VirtualMCPServer PER AUDIENCE (and per bundle RELEASE), each fronting one MCPGroup.
+
+RELEASES (2026-10-16): see _helpers.tpl "archi.vmcpRelease". A release vMCP shares its
+host with the "latest" one at the root, on /releases/<version> -- same mechanism as
+remoteproxy.yaml: the route strips the prefix, and an Exact rule serves this vMCP's
+RFC 9728 document at /.well-known/oauth-protected-resource<path>/mcp.
 
 WHY A LIST: oidcConfigRef.audience is a single string, and the CRD says it
 "MUST be unique per server to prevent token replay attacks". Two client
@@ -24,19 +29,56 @@ Operator 0.47.0 quirks, all found by apply and all still true:
 */}}
 {{- range $v := .Values.vmcps }}
 {{- $n := include "archi.name" (dict "base" $v.name "ctx" $) }}
+{{- $relName := include "archi.vmcpRelease" (dict "v" $v "ctx" $) }}
+{{- $path := include "archi.vmcpPath" (dict "v" $v "ctx" $) }}
+{{- $group := $v.group | default $.Values.group.name }}
+{{- $authzSet := $v.authzSet | default "default" }}
+{{- $backends := $v.backends | default $.Values.vmcp.backends }}
+{{- $fp := "" }}
+{{- if $relName }}
+{{- $rel := index $.Values.bundles.releases $relName }}
+{{- $group = $rel.group }}
+{{- $authzSet = $rel.authzSet }}
+{{- /* release `backends` honours an explicit [] (the legacy `default` cannot) */}}
+{{- $backends = hasKey $rel "backends" | ternary $rel.backends $.Values.vmcp.backends }}
+{{- if not (hasKey $.Values.authz.sets $authzSet) }}
+{{- fail (printf "bundles.releases.%s.authzSet %q: no authz.sets.%s" $relName $authzSet $authzSet) }}
+{{- end }}
+{{- $fp = include "archi.bundleFingerprint" (dict "ctx" $ "release" $relName) }}
+{{- if $rel.frozen }}
+{{- /* FREEZE GUARD: a frozen release renders only while its members are unchanged */}}
+{{- range $s := $.Values.servers }}
+{{- if and (eq ($s.group | default $.Values.group.name) $group) (not (contains "@sha256:" $s.image)) }}
+{{- fail (printf "bundle %s is frozen but servers[%s].image %q is a tag: pin it by digest (tags move)" $relName $s.name $s.image) }}
+{{- end }}
+{{- end }}
+{{- if ne (toString $rel.frozen) $fp }}
+{{- fail (printf "bundle %s is FROZEN at %s but its members now hash to %s. A frozen release does not change: cut a new release (new group) for the change, or -- deliberately -- re-freeze with the new value." $relName (toString $rel.frozen) $fp) }}
+{{- end }}
+{{- end }}
+{{- end }}
 ---
 apiVersion: {{ $.Values.apiVersions.virtualMCPServer }}
 kind: VirtualMCPServer
 metadata:
   name: {{ $n }}
   namespace: {{ $.Values.namespace }}
+{{- if $relName }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    archi-crab.cern.ch/bundle-fingerprint: {{ $fp | quote }}
+{{- else }}
   annotations: {argocd.argoproj.io/sync-wave: "3"}
+{{- end }}
   labels:
 {{ include "archi.labels" $ | indent 4 }}
     archi-crab.cern.ch/vmcp: {{ $v.name }}
+{{- if $relName }}
+    archi-crab.cern.ch/release: {{ $relName | quote }}
+{{- end }}
 spec:
   groupRef:
-    name: {{ include "archi.name" (dict "base" ($v.group | default $.Values.group.name) "ctx" $) }}
+    name: {{ include "archi.name" (dict "base" $group "ctx" $) }}
 
   incomingAuth:
     type: oidc
@@ -53,27 +95,29 @@ spec:
       # would advertise -- moot here, but the field is required.
       resourceUrl: "http://vmcp-{{ $n }}.{{ $.Values.namespace }}.svc:{{ $.Values.vmcp.servicePort }}/mcp"
 {{- else }}
-      resourceUrl: "https://{{ $v.host }}/mcp"
+      {{- /* with a release path: the full public URL, so this vMCP's RFC 9728 document
+             says resource = the URL the client dialled (vMCP and proxies share pkg/auth) */}}
+      resourceUrl: "https://{{ $v.host }}{{ $path }}/mcp"
 {{- end }}
 
 {{- if $.Values.authz.enabled }}
     # Cedar lives INSIDE incomingAuth on VirtualMCPServer (v1beta1), unlike
     # MCPRemoteProxy where it is top-level. Confirmed against the CRD 2026-09-27.
     authzConfigRef:
-      name: {{ include "archi.name" (dict "base" (printf "cedar-%s" ($v.authzSet | default "default")) "ctx" $) }}
+      name: {{ include "archi.name" (dict "base" (printf "cedar-%s" $authzSet) "ctx" $) }}
 {{- end }}
 
   outgoingAuth:
     source: discovered
     backends:
-{{- range ($v.backends | default $.Values.vmcp.backends) }}
+{{- range $backends }}
       {{ include "archi.name" (dict "base" . "ctx" $) }}:
         type: discovered
 {{- end }}
 {{- /* Remote group members: outgoing token exchange instead of discovery.
        Shape gate: kubectl explain virtualmcpserver.spec.outgoingAuth.backends */}}
 {{- range $e := $.Values.serverEntries }}
-{{- if eq ($e.group | default $.Values.group.name) ($v.group | default $.Values.group.name) }}
+{{- if eq ($e.group | default $.Values.group.name) $group }}
       {{ include "archi.name" (dict "base" $e.name "ctx" $) }}:
 {{- if $e.exchangeAudience }}
         type: externalAuthConfigRef

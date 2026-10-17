@@ -194,7 +194,7 @@ servers:
   # Name crab-op != crab: workload names are unique, so rc1's tools are crab-op-staging_*.
   - name: crab-op
     group: crab-operator
-    image: registry.cern.ch/cmscrab/crab-mcp@sha256:5e7c0e0de1d0847cc4bae2b3112b53214baeffe470ff095c708cd1fda0ad94fb   # <- rc1 crab-mcp image (bump here)
+    image: registry.cern.ch/cmscrab/crab-mcp@sha256:0c98d8bebc1caa7fdcc236d60c547d61014e847d15b93fb9b8f67cebb1be3ef1   # <- rc1 crab-mcp image (bump here) :v1.261017.patch3
     transport: streamable-http
     port: 8000
     mcpPath: /mcp

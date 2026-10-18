@@ -1,9 +1,8 @@
 # archi-crab-okg, staging, instance C = okg engine v0.2.0-rc2 (9221a10) x corpus v0.1.0
 # (archi-crab-okg releases/matrix.yaml). Served at /releases/v0.2.0-rc2/v0.1.0/mcp. Replaces C on
-# rc1 (48-archi-crab-okg-v0-2-0-rc1-v0-1-0-app.yaml), which is removed once this one is frozen.
-# BUILDING: targetRevision is the merge sha of archi-crab-okg's "release C rc2" PR (RELEASES R3).
-# Once frozen it becomes the tag okg/releases/v0.2.0-rc2/v0.1.0 (R8). Needs Secret
-# okg-archi-crab-v0-2-0-rc2-v0-1-0 BEFORE this syncs (R4).
+# rc1 (removed 2026-10-18, RELEASES R8).
+# LIVE, frozen: deployed from the tag okg/releases/v0.2.0-rc2/v0.1.0. Built 2026-10-18 from the
+# release-C-rc2 merge 6110acc. Secret okg-archi-crab-v0-2-0-rc2-v0-1-0.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -15,7 +14,7 @@ spec:
   project: archi-crab
   source:
     repoURL: https://github.com/nausikt/archi-crab-okg.git
-    targetRevision: 6110accaef136cdefc2d54d40fb4a56bed34bb4e   # building: the merge sha; live: the deploy tag. Never a branch.
+    targetRevision: okg/releases/v0.2.0-rc2/v0.1.0   # a tag, never a branch
     path: helm/okg
     helm:
       valueFiles: [../../envs/releases/v0.2.0-rc2/v0.1.0/values.yaml]

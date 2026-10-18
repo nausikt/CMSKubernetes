@@ -343,16 +343,7 @@ remoteProxies:
     path: /releases/43f459c6/v0.1.0
     audience: archi-crab-okg-public-staging
     policies: *okg-policies
-  # C: okg engine v0.2.0-rc1 (06a4771) x corpus v0.1.0
-  - name: okg-v0-2-0-rc1-v0-1-0
-    enabled: true
-    url: http://archi-crab-okg-v0-2-0-rc1-v0-1-0-mcp.archi-crab-staging.svc:8765/mcp
-    private: true
-    host: archi-crab-okg-staging.cern.ch
-    path: /releases/v0.2.0-rc1/v0.1.0
-    audience: archi-crab-okg-public-staging
-    policies: *okg-policies
-  # C: okg engine v0.2.0-rc2 (9221a10) x corpus v0.1.0. Replaces okg-v0-2-0-rc1-v0-1-0 above (removed at R8).
+  # C: okg engine v0.2.0-rc2 (9221a10) x corpus v0.1.0. Replaced okg-v0-2-0-rc1-v0-1-0 (removed 2026-10-18).
   - name: okg-v0-2-0-rc2-v0-1-0
     enabled: true
     url: http://archi-crab-okg-v0-2-0-rc2-v0-1-0-mcp.archi-crab-staging.svc:8765/mcp

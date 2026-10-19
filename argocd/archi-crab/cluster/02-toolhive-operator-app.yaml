@@ -38,6 +38,7 @@ spec:
           # 1 on 2026-10-16 for the release-path proxies (archi-crab-okg docs/RELEASES.md 0.4); 0 again after.
           # 0 again 2026-10-16 once okg C's proxy (/releases/v0.2.0-rc1/v0.1.0) was Ready (RELEASES 1.8).
           # 1 for the dev slot's proxy (/releases/dev, RELEASES "Weekly dev slot"); 0 again at its freeze (D6).
+          # 1 (kept) 2026-10-19 for the D, v2 v0.2.0-rc1 and prod F proxies; 0 again once all three are frozen.
           replicaCount: 1
           rbac: {scope: cluster}
   destination: {server: https://kubernetes.default.svc, namespace: toolhive-system}

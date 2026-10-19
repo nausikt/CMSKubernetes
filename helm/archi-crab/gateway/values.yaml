@@ -87,9 +87,9 @@ listeners:
   - host: archi-crab-okg-staging.cern.ch
     tlsSecret: archi-crab-okg-staging-tls
     env: staging
-  # - host: archi-crab-okg.cern.ch
-  #   tlsSecret: archi-crab-okg-tls
-  #   env: prod
+  - host: archi-crab-okg.cern.ch          # F (prod okg); cert Secret archi-crab-okg-tls + LanDB alias
+    tlsSecret: archi-crab-okg-tls
+    env: prod
   # archi v2 benchmark fixture: ONE environment, ONE hostname (/grep/mcp, /vectorstore/mcp),
   # routes from archi-crab-staging (hence env: staging). Safe before the cert, as above.
   - host: archi-crab-v2.cern.ch

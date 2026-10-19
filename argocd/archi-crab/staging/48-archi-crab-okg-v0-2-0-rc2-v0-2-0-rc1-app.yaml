@@ -1,0 +1,23 @@
+# archi-crab-okg, staging, instance D = okg engine v0.2.0-rc2 (9221a10) x corpus v0.2.0-rc1, adapter b
+# (git-history lane; archi-crab-okg releases/matrix.yaml). Served at /releases/v0.2.0-rc2/v0.2.0-rc1/mcp;
+# staging /mcp moves here once it is live. BUILDING from the build merge 96bf698 (knowledge revision
+# 6605896). Secret okg-archi-crab-v0-2-0-rc2-v0-2-0-rc1. Fixed ClusterIP 10.254.0.204.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: 96bf698fd207731c89103a9d72c28a556d62ced5   # building: the build merge (archi-crab-okg #48); live: the deploy tag. Never a branch.
+    path: helm/okg
+    helm:
+      valueFiles: [../../envs/releases/v0.2.0-rc2/v0.2.0-rc1/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 3, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}

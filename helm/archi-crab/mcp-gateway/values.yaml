@@ -148,7 +148,6 @@ authz:
 #  - remoteProxies: standalone proxy pod with its OWN path/endpoint + audit.
 #    Use only when a remote must be addressable outside a bundle.
 serverEntries: []
-remoteProxies: []
 
 
 redis:
@@ -275,4 +274,22 @@ networkPolicy:
 # ---------------------------------------------------------------------------
 # Standalone remote gateways (templates/remoteproxy.yaml): own hostname,
 # audience, Cedar. Environments add entries; see values-staging.yaml (okg).
-remoteProxies: []
+remoteProxies:
+  # F: prod's own okg instance (engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b), release
+  # archi-crab-okg in archi-crab. Same Cedar as staging: cms-members may call tools, `query` never.
+  - name: okg
+    enabled: true
+    url: http://archi-crab-okg-mcp.archi-crab.svc:8765/mcp
+    private: true
+    host: archi-crab-okg.cern.ch
+    audience: archi-crab-okg-public
+    policies:
+      - |
+        permit(principal, action == Action::"list_tools", resource);
+      - |
+        // raw SQL never reaches agents, whoever they are
+        forbid(principal, action == Action::"call_tool", resource == Tool::"query");
+      - |
+        permit(principal, action == Action::"call_tool", resource)
+        when { principal has claim_cern_roles
+               && principal.claim_cern_roles.contains("cms-members") };

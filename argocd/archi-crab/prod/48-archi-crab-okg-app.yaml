@@ -1,0 +1,24 @@
+# archi-crab-okg, PROD, instance F = okg engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b (git-history),
+# built separately from staging's D (own database, Secret okg-archi-crab in archi-crab, volumes
+# cinder-io1 150Gi + cinder-standard 75Gi). https://archi-crab-okg.cern.ch/mcp, audience
+# archi-crab-okg-public, Cedar cms-members. BUILDING from the build merge 96bf698 (knowledge revision
+# 6605896); deployed from the tag okg/prod/v0.2.0-rc2/v0.2.0-rc1 once frozen. Fixed ClusterIP 10.254.0.210.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-okg
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: 96bf698fd207731c89103a9d72c28a556d62ced5   # building: the build merge (archi-crab-okg #48); live: the deploy tag. Never a branch.
+    path: helm/okg
+    helm:
+      valueFiles: [../../envs/prod/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 3, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}

@@ -352,6 +352,15 @@ remoteProxies:
     path: /releases/v0.2.0-rc2/v0.1.0
     audience: archi-crab-okg-public-staging
     policies: *okg-policies
+  # D: okg engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b (git-history). Staging /mcp moves here once live.
+  - name: okg-v0-2-0-rc2-v0-2-0-rc1
+    enabled: true
+    url: http://archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
+    private: true
+    host: archi-crab-okg-staging.cern.ch
+    path: /releases/v0.2.0-rc2/v0.2.0-rc1
+    audience: archi-crab-okg-public-staging
+    policies: *okg-policies
   # dev slot: okg `dev`, re-pinned weekly (engine dev-<week>) x the newest corpus. STAGING ONLY.
   # Fixed Service and path; the instance behind them is rebuilt every week (RELEASES "Weekly dev slot").
   - name: okg-dev
@@ -406,5 +415,22 @@ remoteProxies:
     private: true
     host: archi-crab-v2.cern.ch
     path: /vectorstore/releases/v0.1.0
+    audience: archi-crab-okg-public-staging
+    policies: *v2-policies
+  # v2 x corpus v0.2.0-rc1 (release archi-v2-v0-2-0-rc1). /grep/mcp and /vectorstore/mcp move here once live.
+  - name: v2-grep-v0-2-0-rc1
+    enabled: true
+    url: http://archi-v2-v0-2-0-rc1-mcp-grep.archi-crab-staging.svc:8081/mcp
+    private: true
+    host: archi-crab-v2.cern.ch
+    path: /grep/releases/v0.2.0-rc1
+    audience: archi-crab-okg-public-staging
+    policies: *v2-policies
+  - name: v2-vector-v0-2-0-rc1
+    enabled: true
+    url: http://archi-v2-v0-2-0-rc1-mcp-vector.archi-crab-staging.svc:8082/mcp
+    private: true
+    host: archi-crab-v2.cern.ch
+    path: /vectorstore/releases/v0.2.0-rc1
     audience: archi-crab-okg-public-staging
     policies: *v2-policies

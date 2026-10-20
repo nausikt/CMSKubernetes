@@ -14,7 +14,7 @@ spec:
   project: archi-crab
   source:
     repoURL: https://github.com/nausikt/archi-crab-okg.git
-    targetRevision: 826cc51feb81a2e2457c26eeab223fa05b6d85fd   # building: the build merge (archi-crab-okg #48); live: the deploy tag. Never a branch.
+    targetRevision: okg/prod/v0.2.0-rc2/v0.2.0-rc1   # building: the build merge (archi-crab-okg #48); live: the deploy tag. Never a branch.
     path: helm/okg
     helm:
       valueFiles: [../../envs/prod/values.yaml]

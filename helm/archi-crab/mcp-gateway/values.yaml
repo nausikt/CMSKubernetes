@@ -166,7 +166,7 @@ telemetry:
 # ---------------------------------------------------------------------------
 servers:
   - name: site-status
-    image: registry.cern.ch/cmscrab/site-status-mcp@sha256:TODO
+    image: registry.cern.ch/cmscrab/site-status-mcp@sha256:8c8b29a8bf40ba92b60ed7ec53985d4df0b12fd53bf0ffa93309a00a353aac2f
     transport: streamable-http
     port: 8000
     mcpPath: /mcp

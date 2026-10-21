@@ -77,7 +77,9 @@ toolServers:
     key: null
     config: {}
     info: {id: crab-operator, name: "CRAB bundle v0.2.0-rc1-operator", description: "CRAB (crab-mcp v1.261017.patch3), site status", enabled: true}
-  - url: "http://mcp-okg-webui-remote-proxy.archi-crab.svc:8080"
+  # OpenWebUI's MCP client POSTs to `url` itself (`path` is for OpenAPI servers): a ToolHive
+  # remote proxy serves MCP only at /mcp (the vMCPs above also answer at /), so the path is in url.
+  - url: "http://mcp-okg-webui-remote-proxy.archi-crab.svc:8080/mcp"
     path: "/mcp"
     type: "mcp"
     auth_type: "system_oauth"

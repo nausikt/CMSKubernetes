@@ -232,6 +232,14 @@ servers:
     writablePaths: [/tmp]
     envPrefix: CRAB_MCP
     operatorUsernames: "kphornsi,crabint1,belforte,vchakrav"
+    # ⚠ 2026-10-21, decided by the owner: as in staging. The vMCP (ToolHive 0.47.0) cannot
+    # forward the user's token to an MCPServer backend, so crab-mcp answered every per-task call
+    # with "Bearer token required for this MCP method." This turns its bearer check OFF: every
+    # caller resolves to the same anonymous identity (NOT in operatorUsernames, so operator-tier
+    # tools stay closed), owner checks pass for everyone, and cmsweb sees only the robot cert.
+    # The gate is OpenWebUI's own login (base-user). REMOVE when per-user token exchange to
+    # backends lands; crab-mcp's verifier already supports it (only CRAB_MCP_OIDC__AUDIENCE changes).
+    disableBearerAuth: true
     env:
       - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb.cern.ch/crabserver/prod"}
       - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}

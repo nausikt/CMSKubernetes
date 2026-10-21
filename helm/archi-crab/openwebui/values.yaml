@@ -68,6 +68,22 @@ toolServers:
     info:
       id: crab
       enabled: true
+  # 2026-10-21: the crab-mcp bundle v0.2.0-rc1-operator (crab-op + site-status) and okg F.
+  # `crab` above stays registered: rollback = model.tools back to [crab].
+  - url: "http://vmcp-crab-mcp-webui-operator.archi-crab.svc:4483"
+    path: "/mcp"
+    type: "mcp"
+    auth_type: "system_oauth"
+    key: null
+    config: {}
+    info: {id: crab-operator, name: "CRAB bundle v0.2.0-rc1-operator", description: "CRAB (crab-mcp v1.261017.patch3), site status", enabled: true}
+  - url: "http://mcp-okg-webui-remote-proxy.archi-crab.svc:8080"
+    path: "/mcp"
+    type: "mcp"
+    auth_type: "system_oauth"
+    key: null
+    config: {}
+    info: {id: okg, name: "archi-crab-okg", description: "CRAB knowledge graph: okg v0.2.0-rc2 x corpus v0.2.0-rc1 (F)", enabled: true}
 
 # THE ASSISTANT MODEL -- the user's entry point. Tools are attached to the
 # MODEL, not enabled per-chat: users pick "CRAB Assistant" and the wrench menu
@@ -76,9 +92,9 @@ model:
   id: crab-assistant
   name: "CRAB Assistant"
   base: gpt-5-luna                # must match a LiteLLM model id
-  description: "CRAB operations assistant (CRAB, site status, CompOps, knowledge graph)"
+  description: "CRAB operations assistant (CRAB, site status, knowledge graph)"
   # toolServers[].info.id values to attach; the job renders server:mcp:<id>.
-  tools: [crab]
+  tools: [crab-operator, okg]     # was [crab]: rollback = [crab]
   default: true                   # also set as the instance default model
   # Merged into the model's meta.capabilities (other capabilities untouched).
   # builtin_tools off: OpenWebUI's ~35 built-ins + 99 MCP tools exceed the

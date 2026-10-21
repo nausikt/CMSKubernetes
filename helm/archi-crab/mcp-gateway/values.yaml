@@ -36,7 +36,7 @@ apiVersions:
 
 # All groups this release manages; `group.name` below stays the DEFAULT group
 # for backends/vmcps that do not set their own `group:` key.
-groups: [crab, sst, oc-common, okg]
+groups: [crab, crab-operator, sst, oc-common, okg]
 group:
   name: crab
 
@@ -76,6 +76,16 @@ vmcps:
     # roles (base-user, archi-admins) gate the UI. auth_type: system_oauth
     # forwards that login token as-is, so this vMCP validates its audience.
     audience: archi-crab-production
+  # OpenWebUI on the crab-mcp bundle v0.2.0-rc1-operator (2026-10-21). A NEW vMCP next to
+  # crab-mcp-webui, which stays untouched (rollback = OpenWebUI's model.tools back to [crab]).
+  # Members: crab-op (the revamped crab-mcp image) + site-status-op (the one site-status
+  # instance, shared). compops / sst-triage are NOT here: prod has no token-exchange grants
+  # for them, and the full rc1 bundle is 129 tools > OpenWebUI's 128-tool limit.
+  - name: crab-mcp-webui-operator
+    internal: true
+    audience: archi-crab-production
+    group: crab-operator
+    backends: [crab-op]
 
 # Shared by every vMCP above.
 vmcp:
@@ -147,7 +157,14 @@ authz:
 #    all-in-one mechanism -- compops rides the crab group this way.
 #  - remoteProxies: standalone proxy pod with its OWN path/endpoint + audit.
 #    Use only when a remote must be addressable outside a bundle.
-serverEntries: []
+serverEntries:
+  # Group crab-operator (OpenWebUI's v0.2.0-rc1-operator bundle): the ONE prod site-status
+  # instance, shared with the crab group (no second deployment). Entry name differs from the
+  # workload (names are unique), so its tools are site-status-op_*.
+  - name: site-status-op
+    url: http://mcp-site-status-proxy.archi-crab.svc.cluster.local:8000/mcp
+    group: crab-operator
+    private: true
 
 
 redis:
@@ -184,6 +201,31 @@ servers:
 
   - name: crab
     image: registry.cern.ch/cmscrab/crab-mcp:preprod-1789131706
+    transport: streamable-http
+    port: 8000
+    mcpPath: /mcp
+    writablePaths: [/tmp]
+    envPrefix: CRAB_MCP
+    operatorUsernames: "kphornsi,crabint1,belforte,vchakrav"
+    env:
+      - {name: CRAB_MCP_CRAB__BASE_URL,   value: "https://cmsweb.cern.ch/crabserver/prod"}
+      - {name: CRAB_MCP_CRAB__CERT_PATH,  value: "/data/certs/robotcert.pem"}
+      - {name: CRAB_MCP_CRAB__KEY_PATH,   value: "/data/certs/robotkey.pem"}
+      - {name: CRAB_MCP_CRAB__CA_BUNDLE,  value: "/etc/grid-certs/igtf.pem"}
+      - {name: CRAB_MCP_CRAB__VERIFY_TLS, value: "true"}
+    secretMounts:
+      - {name: crab-robot-cert, mountPath: /data/certs,    defaultMode: 0400}
+      - {name: igtf-bundle,     mountPath: /etc/grid-certs, defaultMode: 0444}
+    resources:
+      proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
+      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+
+  # crab-mcp for bundle v0.2.0-rc1-operator ONLY (group crab-operator): `crab` above with the
+  # revamped image -- the digest staging's release runs (v1.261017.patch3). Same env, secrets
+  # and operator list as prod `crab`; name crab-op != crab (workload names are unique).
+  - name: crab-op
+    group: crab-operator
+    image: registry.cern.ch/cmscrab/crab-mcp@sha256:0c98d8bebc1caa7fdcc236d60c547d61014e847d15b93fb9b8f67cebb1be3ef1   # :v1.261017.patch3
     transport: streamable-http
     port: 8000
     mcpPath: /mcp
@@ -293,3 +335,23 @@ remoteProxies:
         permit(principal, action == Action::"call_tool", resource)
         when { principal has claim_cern_roles
                && principal.claim_cern_roles.contains("cms-members") };
+  # F for OpenWebUI (2026-10-21): the same F Service behind an INTERNAL proxy whose audience
+  # is OpenWebUI's own client (archi-crab-production; system_oauth forwards the login token).
+  # No route, no hostname. Its own Cedar (prod's vMCP authz is off): `query` never, and tool
+  # calls need cms-members OR OpenWebUI's base-user role (whoever got into OpenWebUI).
+  - name: okg-webui
+    enabled: true
+    internal: true
+    url: http://archi-crab-okg-mcp.archi-crab.svc:8765/mcp
+    private: true
+    audience: archi-crab-production
+    policies:
+      - |
+        permit(principal, action == Action::"list_tools", resource);
+      - |
+        forbid(principal, action == Action::"call_tool", resource == Tool::"query");
+      - |
+        permit(principal, action == Action::"call_tool", resource)
+        when { principal has claim_cern_roles
+               && (principal.claim_cern_roles.contains("cms-members")
+                   || principal.claim_cern_roles.contains("base-user")) };

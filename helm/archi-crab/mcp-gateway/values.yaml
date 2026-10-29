@@ -343,6 +343,28 @@ remoteProxies:
         permit(principal, action == Action::"call_tool", resource)
         when { principal has claim_cern_roles
                && principal.claim_cern_roles.contains("cms-members") };
+  # P: AKMON v0.4.0 x corpus v0.2.0-rc1 = THE prod instance of the two-instance model, built beside F
+  # (archi-crab-okg docs/RELEASES.md "Two instances"). Release path; at cutover C2 the `okg` and
+  # `okg-webui` url: lines above/below move to archi-crab-okg-v0-4-0-v0-2-0-rc1-mcp, then F retires.
+  # Tool surface: six reads + `run` served and permitted; `query` not registered (adapter c) AND
+  # forbidden here: two locks.
+  - name: okg-v0-4-0-v0-2-0-rc1
+    enabled: true
+    url: http://archi-crab-okg-v0-4-0-v0-2-0-rc1-mcp.archi-crab.svc:8765/mcp
+    private: true
+    host: archi-crab-okg.cern.ch
+    path: /releases/v0.4.0/v0.2.0-rc1
+    audience: archi-crab-okg-public
+    policies:
+      - |
+        permit(principal, action == Action::"list_tools", resource);
+      - |
+        // raw SQL never reaches agents, whoever they are
+        forbid(principal, action == Action::"call_tool", resource == Tool::"query");
+      - |
+        permit(principal, action == Action::"call_tool", resource)
+        when { principal has claim_cern_roles
+               && principal.claim_cern_roles.contains("cms-members") };
   # F for OpenWebUI (2026-10-21): the same F Service behind an INTERNAL proxy whose audience
   # is OpenWebUI's own client (archi-crab-production; system_oauth forwards the login token).
   # No route, no hostname. Its own Cedar (prod's vMCP authz is off): `query` never, and tool

@@ -39,6 +39,8 @@ spec:
           # 0 again 2026-10-16 once okg C's proxy (/releases/v0.2.0-rc1/v0.1.0) was Ready (RELEASES 1.8).
           # 1 for the dev slot's proxy (/releases/dev, RELEASES "Weekly dev slot"); 0 again at its freeze (D6).
           # 1 (kept) 2026-10-19 for the D, v2 v0.2.0-rc1 and prod F proxies; 0 again once all three are frozen.
+          # 1 (kept) for S's and P's proxies (/releases/v0.4.0/v0.2.0-rc1 on both hosts, RELEASES "Two instances") and for the
+          # corpus v0.1.0 retirement (proxy deletions need its finalizers); 0 again at E7 / V4.
           replicaCount: 1
           rbac: {scope: cluster}
   destination: {server: https://kubernetes.default.svc, namespace: toolhive-system}

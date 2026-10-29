@@ -1,0 +1,27 @@
+# archi-crab-okg, PROD, instance P = AKMON v0.4.0 (okg 5567c79a, public release) x corpus v0.2.0-rc1:
+# THE prod instance of the two-instance model (archi-crab-okg docs/RELEASES.md "Two instances"),
+# S's twin, built BESIDE the serving F (release archi-crab-okg) in namespace archi-crab, its own
+# database on the node labelled archi-crab.cern.ch/okg=prod (12Gi guaranteed), volumes cinder-io1
+# (database, survives a deleted claim) + cinder-io1-delete. Served at
+# https://archi-crab-okg.cern.ch/releases/v0.4.0/v0.2.0-rc1/mcp; prod /mcp (proxies okg + okg-webui)
+# moves here at cutover C2, then F retires (C3). BUILDING from the release merge 66613e38d96d4fca7fba239c5f5b70f26d63eb19 (E3).
+# Secret okg-archi-crab-v0-4-0-v0-2-0-rc1 (seeded from okg-archi-crab, E4). Fixed ClusterIP 10.254.0.211.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-okg-v0-4-0-v0-2-0-rc1-prod
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "4"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: 66613e38d96d4fca7fba239c5f5b70f26d63eb19   # building: the release merge (E3); live: the deploy tag okg/prod/v0.4.0/v0.2.0-rc1. Never a branch.
+    path: helm/okg
+    helm:
+      valueFiles: [../../envs/prod/releases/v0.4.0/v0.2.0-rc1/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: 3, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}

@@ -266,8 +266,9 @@ serverEntries:
   # archi-crab-okg-staging.cern.ch proxy). Named okg-mcp, NOT okg: the
   # MCPRemoteProxy is already okg-staging and the vMCP's discovery resolved
   # the colliding name to the proxy and dropped the entry (2026-09-28).
+  # Backend = the SAME instance staging /mcp points at (D since corpus v0.1.0's retirement; S at cutover C1).
   - name: okg-mcp
-    url: http://archi-crab-okg-staging-mcp.archi-crab-staging.svc:8765/mcp
+    url: http://archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
     group: okg
     private: true
   - name: compops
@@ -316,9 +317,10 @@ serverEntries:
 # proxies of their own (the OAuth resource URL must equal the dialled URL), never a second
 # instance. Moving "latest" = changing a pointer's `url:`.
 remoteProxies:
-  # POINTER: staging "latest" (/mcp) -> A (43f459c6 x v0.1.0) today, D (v0.2.0-rc1 x v0.2.0-rc1) later.
+  # POINTER: staging "latest" (/mcp) -> D (v0.2.0-rc2 x v0.2.0-rc1) since corpus v0.1.0's retirement
+  # (A, 43f459c6 x v0.1.0, retired); -> S (AKMON v0.4.0 x v0.2.0-rc1) at cutover C1.
   - name: okg
-    url: http://archi-crab-okg-staging-mcp.archi-crab-staging.svc:8765/mcp
+    url: http://archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
     private: true
     host: archi-crab-okg-staging.cern.ch
     audience: archi-crab-okg-public-staging
@@ -334,18 +336,10 @@ remoteProxies:
                && principal.claim_cern_roles.contains("cms-members") };
 
   # run1 (okg v3, /run1) retired 2026-10-16 with its app and volumes (archi-crab-okg RELEASES 0.4).
-  # A: okg engine 43f459c6 x corpus v0.1.0 (the instance staging built on 2026-10-06)
-  - name: okg-43f459c6-v0-1-0
-    enabled: true
-    url: http://archi-crab-okg-staging-mcp.archi-crab-staging.svc:8765/mcp
-    private: true
-    host: archi-crab-okg-staging.cern.ch
-    path: /releases/43f459c6/v0.1.0
-    audience: archi-crab-okg-public-staging
-    policies: *okg-policies
-  # C (okg-v0-2-0-rc2-v0-1-0, /releases/v0.2.0-rc2/v0.1.0) and the dev slot (okg-dev, /releases/dev):
-  # retired 2026-10-30 with their apps and volumes (corpus v0.1.0 ablations done; Cinder quota).
-  # D: okg engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b (git-history). Staging /mcp moves here once live.
+  # Corpus v0.1.0 retired (archi-crab-okg RELEASES "Retiring corpus v0.1.0"): A (okg-43f459c6-v0-1-0,
+  # /releases/43f459c6/v0.1.0), C (okg-v0-2-0-rc2-v0-1-0, /releases/v0.2.0-rc2/v0.1.0) and the
+  # dev slot (okg-dev, /releases/dev) removed with their apps and volumes.
+  # D: okg engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b (git-history). Staging /mcp points here.
   - name: okg-v0-2-0-rc2-v0-2-0-rc1
     enabled: true
     url: http://archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp

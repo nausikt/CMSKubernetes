@@ -348,6 +348,19 @@ remoteProxies:
     path: /releases/v0.2.0-rc2/v0.2.0-rc1
     audience: archi-crab-okg-public-staging
     policies: *okg-policies
+  # S: AKMON v0.4.0 (okg 5567c79a, public release) x corpus v0.2.0-rc1 = THE staging instance
+  # (two-instance model). Staging /mcp and serverEntries okg-mcp move here at cutover C1
+  # (archi-crab-okg docs/RELEASES.md, "Two instances"). Tool surface: the six reads + `run`
+  # (chained steps) are served and permitted; `query` (raw SQL) is NOT registered by the
+  # server (adapter c) AND forbidden below: two locks.
+  - name: okg-v0-4-0-v0-2-0-rc1
+    enabled: true
+    url: http://archi-crab-okg-v0-4-0-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
+    private: true
+    host: archi-crab-okg-staging.cern.ch
+    path: /releases/v0.4.0/v0.2.0-rc1
+    audience: archi-crab-okg-public-staging
+    policies: *okg-policies
 
   # --- archi v2 benchmark fixture (archi-crab-okg v2/, release archi-v2, one environment).
   # ONE hostname archi-crab-v2.cern.ch, a path per tool family; the MCP servers are sidecars of

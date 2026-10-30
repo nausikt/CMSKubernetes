@@ -325,11 +325,13 @@ networkPolicy:
 # Standalone remote gateways (templates/remoteproxy.yaml): own hostname,
 # audience, Cedar. Environments add entries; see values-staging.yaml (okg).
 remoteProxies:
-  # F: prod's own okg instance (engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b), release
-  # archi-crab-okg in archi-crab. Same Cedar as staging: cms-members may call tools, `query` never.
+  # POINTER: prod "latest" (https://archi-crab-okg.cern.ch/mcp) -> P (AKMON v0.4.0 x corpus
+  # v0.2.0-rc1, release archi-crab-okg-v0-4-0-v0-2-0-rc1) since cutover C2; F (release
+  # archi-crab-okg, v0.2.0-rc2) retired at C3. Same Cedar as staging: cms-members may call tools,
+  # `query` never. Moving "latest" = this url: and okg-webui's, nothing else.
   - name: okg
     enabled: true
-    url: http://archi-crab-okg-mcp.archi-crab.svc:8765/mcp
+    url: http://archi-crab-okg-v0-4-0-v0-2-0-rc1-mcp.archi-crab.svc:8765/mcp
     private: true
     host: archi-crab-okg.cern.ch
     audience: archi-crab-okg-public
@@ -365,14 +367,14 @@ remoteProxies:
         permit(principal, action == Action::"call_tool", resource)
         when { principal has claim_cern_roles
                && principal.claim_cern_roles.contains("cms-members") };
-  # F for OpenWebUI (2026-10-21): the same F Service behind an INTERNAL proxy whose audience
+  # P for OpenWebUI (F before C2): the SAME Service as the pointer above, behind an INTERNAL proxy whose audience
   # is OpenWebUI's own client (archi-crab-production; system_oauth forwards the login token).
   # No route, no hostname. Its own Cedar (prod's vMCP authz is off): `query` never, and tool
   # calls need cms-members OR OpenWebUI's base-user role (whoever got into OpenWebUI).
   - name: okg-webui
     enabled: true
     internal: true
-    url: http://archi-crab-okg-mcp.archi-crab.svc:8765/mcp
+    url: http://archi-crab-okg-v0-4-0-v0-2-0-rc1-mcp.archi-crab.svc:8765/mcp
     private: true
     audience: archi-crab-production
     policies:

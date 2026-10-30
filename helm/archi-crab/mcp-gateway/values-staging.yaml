@@ -266,9 +266,9 @@ serverEntries:
   # archi-crab-okg-staging.cern.ch proxy). Named okg-mcp, NOT okg: the
   # MCPRemoteProxy is already okg-staging and the vMCP's discovery resolved
   # the colliding name to the proxy and dropped the entry (2026-09-28).
-  # Backend = the SAME instance staging /mcp points at (D since corpus v0.1.0's retirement; S at cutover C1).
+  # Backend = the SAME instance staging /mcp points at: S since cutover C1 (before: D, then A).
   - name: okg-mcp
-    url: http://archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
+    url: http://archi-crab-okg-v0-4-0-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
     group: okg
     private: true
   - name: compops
@@ -317,10 +317,10 @@ serverEntries:
 # proxies of their own (the OAuth resource URL must equal the dialled URL), never a second
 # instance. Moving "latest" = changing a pointer's `url:`.
 remoteProxies:
-  # POINTER: staging "latest" (/mcp) -> D (v0.2.0-rc2 x v0.2.0-rc1) since corpus v0.1.0's retirement
-  # (A, 43f459c6 x v0.1.0, retired); -> S (AKMON v0.4.0 x v0.2.0-rc1) at cutover C1.
+  # POINTER: staging "latest" (/mcp) -> S (AKMON v0.4.0 x v0.2.0-rc1), THE staging instance since
+  # cutover C1 (two-instance model). Before: D (v0.2.0-rc2, retired C3), A (v0.1.0, retired).
   - name: okg
-    url: http://archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
+    url: http://archi-crab-okg-v0-4-0-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
     private: true
     host: archi-crab-okg-staging.cern.ch
     audience: archi-crab-okg-public-staging
@@ -339,7 +339,9 @@ remoteProxies:
   # Corpus v0.1.0 retired (archi-crab-okg RELEASES "Retiring corpus v0.1.0"): A (okg-43f459c6-v0-1-0,
   # /releases/43f459c6/v0.1.0), C (okg-v0-2-0-rc2-v0-1-0, /releases/v0.2.0-rc2/v0.1.0) and the
   # dev slot (okg-dev, /releases/dev) removed with their apps and volumes.
-  # D: okg engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b (git-history). Staging /mcp points here.
+  # D: okg engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b (git-history). Staging /mcp pointed here until
+  # the AKMON cutover (step 5a); its release path stays one more merge so a rollback is a one-line revert.
+  # Removed with its app in step 5b.
   - name: okg-v0-2-0-rc2-v0-2-0-rc1
     enabled: true
     url: http://archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp

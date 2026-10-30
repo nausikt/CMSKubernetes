@@ -14,4 +14,9 @@ spec:
   destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
   syncPolicy:
     automated: {prune: true, selfHeal: true}
-    syncOptions: [CreateNamespace=true]
+    # Background prune: ToolHive 0.47.0's MCPRemoteProxy controller has no finalizer and never checks
+    # DeletionTimestamp, so under Argo's default FOREGROUND prune it recreates the proxy's Deployment
+    # while the garbage collector deletes it, and the prune never finishes (2026-10-30: the C and dev
+    # proxies hung in `waiting for deletion`). Background deletes the CR at once; the GC then removes
+    # its Deployment/Service, and the operator sees NotFound and stops.
+    syncOptions: [CreateNamespace=true, PrunePropagationPolicy=background]

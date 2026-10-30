@@ -1,3 +1,27 @@
 env: staging
 nameSuffix: "-staging"
 namespace: archi-crab-staging
+
+# Staging's litellm-keys carries the EVAL OpenAI key (production's stays in archi-crab); the
+# pseudonymizing relay (archi-crab-okg relay/, 47-relay-app.yaml) sends every evaluation call here.
+# The list REPLACES values.yaml's (Helm lists do not merge): keep gpt-5-luna, OpenWebUI
+# staging's default, and add the evaluation's model under its PUBLIC id, so the evaluator's
+# archi config (default_model: gpt-6-luna) needs no renaming (archi-crab-okg relay/RUNBOOK.md).
+# litellm_settings.drop_params is true: a parameter LiteLLM does not map for a model is dropped
+# silently; check reasoning_effort once with /utils/supported_openai_params?model=gpt-6-luna.
+models:
+  - model_name: gpt-5-luna
+    litellm_params:
+      model: openai/gpt-5
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: gpt-6-luna          # the evaluation answerer (peer standard C3: gpt-6-luna, reasoning effort medium)
+    litellm_params:
+      model: openai/gpt-6-luna
+      api_key: os.environ/OPENAI_API_KEY
+  # Ollama on a MIT submit node (values.yaml). NOT for the relay's list building: that must be a
+  # model inside the organisation (the CERN AI gateway), see relay/RUNBOOK.md step 5.
+  - model_name: qwen38-27b
+    litellm_params:
+      model: openai/qwen3.8:27B
+      api_base: http://submit76.mit.edu:7870/v1
+      api_key: "ollama"

@@ -1,0 +1,28 @@
+# Pseudonymizing relay for evaluations (archi-crab-okg relay/): https://archi-crab-v2.cern.ch/relay/aigw/v1
+# -> relay -> litellm-staging (whose OPENAI_API_KEY is the EVAL OpenAI key) -> OpenAI sees placeholders.
+# Wave 5: after litellm (4); nginx in the relay pod resolves litellm-staging at start. The repo is
+# private: Argo CD reads it with argocd/repo-archi-crab-okg (archi-crab-okg docs/PRIVATE-REPO.md).
+#
+# NO automated sync, ON PURPOSE (the only app here without it): the relay keeps a run's state in
+# memory, and upstream's README says a restart mid-run is not privacy-neutral. A merged chart or
+# values change waits until someone syncs it between runs, after `scripts/relay-lists.sh stats
+# default` shows inflight == 0. Prerequisites: Secret relay-key (scripts/relay-lists.sh key);
+# runbook: archi-crab-okg relay/RUNBOOK.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: archi-crab-staging-relay
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "5"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: archi-crab
+  source:
+    repoURL: https://github.com/nausikt/archi-crab-okg.git
+    targetRevision: main
+    path: relay/helm/relay
+    helm:
+      valueFiles: [../../envs/staging/values.yaml]
+  destination: {server: https://kubernetes.default.svc, namespace: archi-crab-staging}
+  syncPolicy:
+    syncOptions: [CreateNamespace=false, ServerSideApply=true]

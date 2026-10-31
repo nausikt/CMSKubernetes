@@ -339,17 +339,7 @@ remoteProxies:
   # Corpus v0.1.0 retired (archi-crab-okg RELEASES "Retiring corpus v0.1.0"): A (okg-43f459c6-v0-1-0,
   # /releases/43f459c6/v0.1.0), C (okg-v0-2-0-rc2-v0-1-0, /releases/v0.2.0-rc2/v0.1.0) and the
   # dev slot (okg-dev, /releases/dev) removed with their apps and volumes.
-  # D: okg engine v0.2.0-rc2 x corpus v0.2.0-rc1, adapter b (git-history). Staging /mcp pointed here until
-  # the AKMON cutover (step 5a); its release path stays one more merge so a rollback is a one-line revert.
-  # Removed with its app in step 5b.
-  - name: okg-v0-2-0-rc2-v0-2-0-rc1
-    enabled: true
-    url: http://archi-crab-okg-v0-2-0-rc2-v0-2-0-rc1-mcp.archi-crab-staging.svc:8765/mcp
-    private: true
-    host: archi-crab-okg-staging.cern.ch
-    path: /releases/v0.2.0-rc2/v0.2.0-rc1
-    audience: archi-crab-okg-public-staging
-    policies: *okg-policies
+  # D (okg-v0-2-0-rc2-v0-2-0-rc1, /releases/v0.2.0-rc2/v0.2.0-rc1): retired at C3 with its app and volumes.
   # S: AKMON v0.4.0 (okg 5567c79a, public release) x corpus v0.2.0-rc1 = THE staging instance
   # (two-instance model). Staging /mcp and serverEntries okg-mcp move here at cutover C1
   # (archi-crab-okg docs/RELEASES.md, "Two instances"). Tool surface: the six reads + `run`

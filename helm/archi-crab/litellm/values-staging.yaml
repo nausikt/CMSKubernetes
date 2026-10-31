@@ -41,3 +41,12 @@ models:
   - model_name: embeddinggemma-300m
     litellm_params: {model: openai/embeddinggemma-300m, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY}
     model_info: {mode: embedding}
+  # --- CERN AI gateway, models NOT hosted at CERN (Flatiron Institute, by the name) ---
+  # Staging only. Through the relay they get masked text only; OpenWebUI staging calls LiteLLM directly and lists
+  # them too (unmasked chats), like qwen38-27b at MIT above: the data owner's decision. AIGW_DEV_KEY (key
+  # archi-crab-dev, team CMS-PIONEER) from Secret litellm-keys. Kimi-K3: chat completions only (AIGW answers its
+  # /responses with 404): clients set use_responses_api: false.
+  - model_name: Kimi-K3-FLATIRON
+    litellm_params: {model: openai/Kimi-K3-FLATIRON, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_DEV_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
+  - model_name: MiMo-V2.6-Pro-MOPD-FLATIRON
+    litellm_params: {model: openai/MiMo-V2.6-Pro-MOPD-FLATIRON, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_DEV_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}

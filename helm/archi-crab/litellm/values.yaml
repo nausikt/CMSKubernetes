@@ -8,7 +8,7 @@ image: ghcr.io/berriai/litellm:main-stable
 # main-stable moves: a restart can upgrade LiteLLM. Pin the digest this environment runs (tested), from
 #   kubectl -n <namespace> get pod -l app=<litellm|litellm-staging> -o jsonpath='{.items[0].status.containerStatuses[0].imageID}'
 # (the sha256:... part). Empty: the moving tag.
-imageDigest: ""
+imageDigest: "sha256:c8756e7b9a61fe45df2ccb5b781d388c3b2f3a21ef9e4956630caef20f9f03aa"
 replicas: 1
 # The old pod finishes its in-flight calls before it exits (the relay's timeout is 900 s).
 terminationGracePeriodSeconds: 900

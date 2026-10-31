@@ -1,6 +1,7 @@
 env: staging
 nameSuffix: "-staging"
 namespace: archi-crab-staging
+imageDigest: ""        # staging's own (values.yaml has the command); not prod's
 
 # Staging's litellm-keys carries the EVAL OpenAI key (production's stays in archi-crab); the
 # pseudonymizing relay (archi-crab-okg relay/, 47-relay-app.yaml) sends every evaluation call here.

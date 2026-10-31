@@ -5,8 +5,16 @@ nameSuffix: ""
 namespace: archi-crab
 
 image: ghcr.io/berriai/litellm:main-stable
+# main-stable moves: a restart can upgrade LiteLLM. Pin the digest this environment runs (tested), from
+#   kubectl -n <namespace> get pod -l app=<litellm|litellm-staging> -o jsonpath='{.items[0].status.containerStatuses[0].imageID}'
+# (the sha256:... part). Empty: the moving tag.
+imageDigest: ""
 replicas: 1
-secretName: litellm-keys           # provider keys + LITELLM_MASTER_KEY
+# The old pod finishes its in-flight calls before it exits (the relay's timeout is 900 s).
+terminationGracePeriodSeconds: 900
+# Made by hand (kubectl; the Vault apps are disabled): OPENAI_API_KEY, OPENWEBUI_VIRTUAL_KEY (also LiteLLM's
+# master key). A changed key reaches LiteLLM at its next restart (kubectl rollout restart, between runs).
+secretName: litellm-keys
 
 telemetry:
   otel: true

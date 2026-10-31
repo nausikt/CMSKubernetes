@@ -10,17 +10,7 @@ metadata:
 {{ include "archi.labels" . | indent 4 }}
 data:
   config.yaml: |
-    model_list:
-{{- if .Values.models }}
-{{ toYaml .Values.models | indent 6 }}
-{{- else }}
-      []   # TODO populate. See values.yaml for why there is no quality chain.
-{{- end }}
-    litellm_settings:
-      drop_params: true
-{{- if .Values.telemetry.otel }}
-      callbacks: ["otel"]
-{{- end }}
+{{ include "litellm.config" . | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -32,21 +22,28 @@ metadata:
 {{ include "archi.labels" . | indent 4 }}
 spec:
   replicas: {{ .Values.replicas }}
+  # Every change rolls without a gap: the new pod takes traffic only once LiteLLM answers /health/readiness, and
+  # the old one keeps serving until then, then finishes its in-flight calls (the relay's evaluation calls run
+  # for minutes: terminationGracePeriodSeconds) before it exits.
+  strategy: {type: RollingUpdate, rollingUpdate: {maxSurge: 1, maxUnavailable: 0}}
   selector: {matchLabels: {app: {{ $n }}}}
   template:
     metadata:
       labels:
         app: {{ $n }}
 {{ include "archi.labels" . | indent 8 }}
+      annotations:
+        checksum/config: {{ include "litellm.config" . | sha256sum }}
     spec:
       automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
 {{ include "archi.podSecurityContext" . | indent 8 }}
       containers:
         - name: litellm
           securityContext:
 {{ include "archi.containerSecurityContext" . | indent 12 }}
-          image: {{ .Values.image }}
+          image: {{ .Values.image }}{{ with .Values.imageDigest }}@{{ . }}{{ end }}
           args: ["--config", "/conf/config.yaml", "--port", "4000"]
           envFrom: [{secretRef: {name: {{ .Values.secretName }}}}]
           env:
@@ -60,6 +57,13 @@ spec:
               valueFrom:
                 secretKeyRef: {name: litellm-keys, key: OPENWEBUI_VIRTUAL_KEY}
           ports: [{containerPort: 4000}]
+          # Readiness only, on purpose: a liveness probe that times out while LiteLLM is busy would kill
+          # in-flight evaluation calls. /health/readiness needs no key.
+          readinessProbe:
+            httpGet: {path: /health/readiness, port: 4000}
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             requests: {cpu: 100m, memory: 256Mi}
             limits:   {cpu: 1, memory: 1Gi}

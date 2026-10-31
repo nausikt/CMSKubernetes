@@ -12,8 +12,11 @@ imageDigest: ""
 replicas: 1
 # The old pod finishes its in-flight calls before it exits (the relay's timeout is 900 s).
 terminationGracePeriodSeconds: 900
-# Made by hand (kubectl; the Vault apps are disabled): OPENAI_API_KEY, OPENWEBUI_VIRTUAL_KEY (also LiteLLM's
-# master key). A changed key reaches LiteLLM at its next restart (kubectl rollout restart, between runs).
+# Made by hand (kubectl; the Vault apps are disabled), every LiteLLM key in this one Secret: OPENAI_API_KEY,
+# OPENWEBUI_VIRTUAL_KEY (also LiteLLM's master key), AIGW_SANDBOX_KEY (key archi-crab-sandbox: the CERN-hosted AIGW
+# models) and, in staging, AIGW_DEV_KEY (key archi-crab-dev: FLATIRON). The AIGW keys: scripts/aigw-keys.sh (adds
+# them, leaves the others). A changed key reaches LiteLLM at its next restart (kubectl rollout restart, between runs).
+# When Vault comes back (helm/archi-crab/vault), its <env>/litellm-keys must hold all of them: VSO rewrites the Secret.
 secretName: litellm-keys
 
 telemetry:
@@ -39,5 +42,21 @@ models:
       model: openai/qwen3.8:27B
       api_base: http://submit76.mit.edu:7870/v1
       api_key: "ollama"
+
+  # --- CERN AI gateway (aigw.cern.ch: CERN's LiteLLM proxy; reachable from the CERN network only; public TLS) ---
+  # Hosted AT CERN. Names are AIGW's own. AIGW_SANDBOX_KEY from Secret litellm-keys (scripts/aigw-keys.sh).
+  # timeout = the relay's 900 s. allowed_openai_params: drop_params must not drop reasoning_effort for these.
+  - model_name: qwen3.8-27b-fp16
+    litellm_params: {model: openai/qwen3.8-27b-fp16, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900}
+  - model_name: glm-5.3-flash-int4
+    litellm_params: {model: openai/glm-5.3-flash-int4, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
+  - model_name: gpt-oss-20b
+    litellm_params: {model: openai/gpt-oss-20b, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
+  - model_name: e5-large-v2
+    litellm_params: {model: openai/e5-large-v2, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY}
+    model_info: {mode: embedding}
+  - model_name: embeddinggemma-300m
+    litellm_params: {model: openai/embeddinggemma-300m, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY}
+    model_info: {mode: embedding}
 
 defaultModel: gpt-5-luna

@@ -26,3 +26,18 @@ models:
       model: openai/qwen3.8:27B
       api_base: http://submit76.mit.edu:7870/v1
       api_key: "ollama"
+  # --- CERN AI gateway (aigw.cern.ch: CERN's LiteLLM proxy; reachable from the CERN network only; public TLS) ---
+  # Hosted AT CERN. Names are AIGW's own. AIGW_SANDBOX_KEY from Secret litellm-keys (scripts/aigw-keys.sh).
+  # timeout = the relay's 900 s. allowed_openai_params: drop_params must not drop reasoning_effort for these.
+  - model_name: qwen3.8-27b-fp16
+    litellm_params: {model: openai/qwen3.8-27b-fp16, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900}
+  - model_name: glm-5.3-flash-int4
+    litellm_params: {model: openai/glm-5.3-flash-int4, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
+  - model_name: gpt-oss-20b
+    litellm_params: {model: openai/gpt-oss-20b, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
+  - model_name: e5-large-v2
+    litellm_params: {model: openai/e5-large-v2, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY}
+    model_info: {mode: embedding}
+  - model_name: embeddinggemma-300m
+    litellm_params: {model: openai/embeddinggemma-300m, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY}
+    model_info: {mode: embedding}

@@ -1,6 +1,6 @@
-# archi v2 benchmark fixture, staging, engine archi-e6609f8f x corpus v0.2.0-rc1 (release archi-v2-v0-2-0-rc1,
+# archi v2 benchmark fixture, staging, engine archi-aa42e2a2 x corpus v0.2.0-rc1 (release archi-v2-v0-2-0-rc1,
 # its own Secret and volumes, next to archi-v2 = v0.1.0). Served at archi-crab-v2.cern.ch
-# /{grep,vectorstore}/releases/v0.2.0-rc1/mcp. BUILDING from the build merge 96bf698 (the chart there
+# /{grep,vectorstore}/releases/v0.2.0-rc1/mcp. BUILDING from 1168718 (rebuild PR v2/rc1-rebuild: ingest = the corpus snapshot e2020305, pins d74269e; the chart there
 # names this release's own Services; the weblist is corpus v0.2.0-rc1's).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -13,7 +13,7 @@ spec:
   project: archi-crab
   source:
     repoURL: https://github.com/nausikt/archi-crab-okg.git
-    targetRevision: 96bf698fd207731c89103a9d72c28a556d62ced5   # building: the build merge (archi-crab-okg #48); live: the deploy tag. Never a branch.
+    targetRevision: 1168718c38092440d66df4f20c8e279a03cfcea4   # building: the rebuild sha (v2/rc1-rebuild); live: the deploy tag. Never a branch.
     path: v2/helm/archi-v2
     helm:
       valueFiles: [../../envs/releases/v0.2.0-rc1/values.yaml]

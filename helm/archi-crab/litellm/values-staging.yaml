@@ -19,6 +19,15 @@ models:
     litellm_params:
       model: openai/gpt-6-luna
       api_key: os.environ/OPENAI_API_KEY
+  # GPT-6.1 Sol (OpenAI, released 2026-09-29; $2 / $10 per 1M tokens in / out, 1.05M context): the id the CMS
+  # peer's rig prices (eval/golden-bench/sub_route.py). Same EVAL key; every relay lane reaches it (one LiteLLM).
+  # allowed_openai_params: drop_params must not drop reasoning_effort if this LiteLLM build does not know the model.
+  - model_name: gpt-6.1-sol
+    litellm_params:
+      model: openai/gpt-6.1-sol
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 900
+      allowed_openai_params: [reasoning_effort]
   # Ollama on a MIT submit node (values.yaml). NOT for the relay's list building: that must be a
   # model inside the organisation (the CERN AI gateway), see relay/RUNBOOK.md step 5.
   - model_name: qwen38-27b

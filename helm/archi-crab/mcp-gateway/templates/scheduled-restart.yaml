@@ -121,8 +121,9 @@ spec:
                   k() { curl -sS --cacert "$SA/ca.crt" -H "Authorization: Bearer $(cat "$SA/token")" "$@"; }
                   state=$(cat /work/state 2>/dev/null || echo "busy: no state")
                   if [ "$state" != idle ]; then echo "$(now) skip $POD: $state"; exit 0; fi
-                  pod=$(k --fail "$URL") || { echo "$(now) skip $POD: cannot read it"; exit 0; }
-                  started=$(printf '%s' "$pod" | grep -o '"running":{"startedAt":"[^"]*"' | head -1 | sed 's/.*"startedAt":"//; s/"$//')
+                  pod=$(k --fail "$URL?pretty=false") || { echo "$(now) skip $POD: cannot read it"; exit 0; }
+                  # the API pretty-prints JSON for a curl user agent: drop all whitespace before matching (timestamps hold none)
+                  started=$(printf '%s' "$pod" | tr -d ' \t\r\n' | grep -o '"running":{"startedAt":"[^"]*"' | head -1 | sed 's/.*"startedAt":"//; s/"$//')
                   [ -n "$started" ] || { echo "$(now) skip $POD: not running"; exit 0; }
                   cutoff=$(date -u -d "@$(( $(date +%s) - MIN_AGE_HOURS * 3600 ))" +%Y-%m-%dT%H:%M:%SZ)
                   if awk -v a="$started" -v b="$cutoff" 'BEGIN { exit !(a > b) }'; then

@@ -1,0 +1,83 @@
+{{- $sess := .Values.vmcpSessions | default dict }}
+{{- if $sess.enabled }}
+{{- $n := include "archi.name" (dict "base" "redis-vmcp-sessions" "ctx" $) }}
+# ############################################################################
+# vMCP SESSION STORE (2026-11-02). Shared by the vMCPs that run more than one replica
+# (vmcps[].replicas, sessionStorage in vmcp.yaml), each under its own key prefix
+# `vmcp:<name>:`. A session made on one vMCP pod is found by the other; a restarting
+# pod no longer drops every session.
+#
+# Kept apart from redis-thv-auth on purpose: that one holds every user's CERN tokens
+# and stays reachable by the ToolHive proxies only.
+#
+#   - AUTH password required (Secret `vmcpSessions.authSecret`, key `password`,
+#     created by hand: runbook "CRAB MCP bundle stability", scale-out)
+#   - in memory only: --save '' and no AOF; sessions are ephemeral (30 min idle TTL,
+#     sliding). A Redis restart drops the sessions of the replicated vMCPs once.
+#   - maxmemory + allkeys-lru, as ToolHive recommends (10-50 KB a session: 256mb holds
+#     5,000 or more)
+#   - one replica: while it is down, the replicated vMCPs cannot find sessions.
+#     Small, on the MCP pool, restarted in seconds. Sentinel when that is not enough.
+# ############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: {{ $n }}}}
+  template:
+    metadata:
+      labels:
+        app: {{ $n }}
+{{ include "archi.labels" . | indent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+{{ include "archi.podSecurityContext" . | indent 8 }}
+{{- with include "archi.mcpPlacement" (dict "ctx" $ "indent" 6) }}
+{{ . }}
+{{- end }}
+      containers:
+        - name: redis
+          image: {{ $sess.image | default .Values.redis.image }}
+          securityContext:
+{{ include "archi.containerSecurityContext" . | indent 12 }}
+          # the password via env, never on the command line (visible in ps and describe)
+          command: ["sh", "-c"]
+          args:
+            - exec redis-server --save '' --appendonly no --maxmemory {{ $sess.maxmemory | default "256mb" }} --maxmemory-policy allkeys-lru --requirepass "$REDIS_PASSWORD"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $sess.authSecret }}
+                  key: password
+          ports: [{containerPort: 6379}]
+          readinessProbe:
+            tcpSocket: {port: 6379}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits:   {cpu: 500m, memory: 384Mi}
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        - name: data
+          emptyDir: {medium: Memory}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $n }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+  labels:
+{{ include "archi.labels" . | indent 4 }}
+spec:
+  selector: {app: {{ $n }}}
+  ports: [{port: 6379, targetPort: 6379}]
+{{- end }}

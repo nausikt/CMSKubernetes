@@ -71,10 +71,12 @@ vmcps:
     # aud=<clientId>. claude mcp add --client-id crab-mcp-gateway-public-staging ...
     audience: crab-mcp-gateway-public-staging
     release: latest
+    replicas: 2                  # 2026-11-02: Redis sessions, one pod on node-2, one on node-4
   - name: crab-mcp-v0-2-0-rc1-operator
     host: crab-mcp-staging.cern.ch      # serves /releases/v0.2.0-rc1-operator/mcp
     audience: crab-mcp-gateway-public-staging
     release: v0.2.0-rc1-operator
+    replicas: 2                  # 2026-11-02: the eval bundle; Redis sessions, one pod on node-2, one on node-4
   - name: crab-mcp-v0-1-0
     host: crab-mcp-staging.cern.ch      # serves /releases/v0.1.0/mcp
     audience: crab-mcp-gateway-public-staging
@@ -118,6 +120,22 @@ vmcp:
   resources:
     requests: {cpu: 200m, memory: 256Mi}
     limits:   {cpu: "1",  memory: 2Gi}
+
+# MCP POOL (2026-11-02): the nodes labelled archi-crab.cern.ch/pool=mcp by hand (runbook "CRAB MCP
+# bundle stability", scale-out): node-2 and node-4, the two workers with ~10.6 Gi free and ~30 % of memory
+# requested (node-0 and node-3 carry the okg Postgres, node-1 and node-6 OpenWebUI and LiteLLM). No taint:
+# the nodes stay shared, MCP pods only PREFER them. The vMCP replicas spread one per node. Unset = no
+# placement (prod).
+mcpPool:
+  key: archi-crab.cern.ch/pool
+  value: mcp
+
+# Session store for the vMCPs that run more than one replica (vmcps[].replicas).
+# Secret: kubectl -n archi-crab-staging create secret generic vmcp-sessions-redis --from-literal=password=...
+vmcpSessions:
+  enabled: true
+  authSecret: vmcp-sessions-redis
+  maxmemory: 256mb
 
 cern:
   issuer:  "https://auth.cern.ch/auth/realms/cern"

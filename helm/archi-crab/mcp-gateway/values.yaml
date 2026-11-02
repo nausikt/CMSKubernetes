@@ -107,6 +107,11 @@ vmcp:
   #   requests: {cpu: 200m, memory: 256Mi}
   #   limits:   {cpu: "1",  memory: 2Gi}
 
+# mcpPool / vmcpSessions: UNSET in prod (2026-11-02); staging runs them first. With them unset
+# the render is unchanged: no placement, no session Redis, one pod per vMCP.
+# mcpPool: {key: archi-crab.cern.ch/pool, value: mcp}
+# vmcpSessions: {enabled: true, authSecret: vmcp-sessions-redis, maxmemory: 256mb}
+
 cern:
   issuer:  "https://auth.cern.ch/auth/realms/cern"
   jwksUri: "https://auth.cern.ch/auth/realms/cern/protocol/openid-connect/certs"

@@ -44,6 +44,9 @@ spec:
 
   podTemplateSpec:
     spec:
+{{- with include "archi.mcpPlacement" (dict "ctx" $ "indent" 6) }}
+{{ . }}
+{{- end }}
       containers:
         - name: mcp
           env:

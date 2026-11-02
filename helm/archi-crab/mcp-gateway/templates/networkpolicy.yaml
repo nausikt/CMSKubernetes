@@ -75,6 +75,26 @@ spec:
       ports: [{protocol: TCP, port: 6379}]
 ---
 {{- end }}
+{{- if (.Values.vmcpSessions | default dict).enabled }}
+# vMCP session Redis: reachable ONLY from vMCP pods (our label, vmcp.yaml podTemplateSpec).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "archi.name" (dict "base" "redis-vmcp-sessions-ingress" "ctx" $) }}
+  namespace: {{ .Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "-1"}
+spec:
+  podSelector:
+    matchLabels: {app: {{ include "archi.name" (dict "base" "redis-vmcp-sessions" "ctx" $) }}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - {key: archi-crab.cern.ch/vmcp-pod, operator: Exists}
+      ports: [{protocol: TCP, port: 6379}]
+---
+{{- end }}
 # Gateway -> proxy pods. The Gateway runs in this namespace, but Cilium's
 # Envoy may be host-networked; adjust if routes 503 after enabling policies.
 apiVersion: networking.k8s.io/v1

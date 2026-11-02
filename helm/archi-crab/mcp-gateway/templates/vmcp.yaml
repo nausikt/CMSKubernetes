@@ -80,21 +80,56 @@ spec:
   groupRef:
     name: {{ include "archi.name" (dict "base" $group "ctx" $) }}
 {{- $res := $v.resources | default $.Values.vmcp.resources }}
-{{- if $res }}
+{{- $pool := $.Values.mcpPool | default dict }}
+{{- $reps := $v.replicas | default 0 | int }}
+{{- $sess := $.Values.vmcpSessions | default dict }}
+{{- if and (gt $reps 1) (not $sess.enabled) }}
+{{- fail (printf "vmcps[%s].replicas %d needs vmcpSessions.enabled: without shared sessions a request on the other pod gets 404" $v.name $reps) }}
+{{- end }}
+{{- if gt $reps 0 }}
 
-  # The vMCP container's resources (vmcps[].resources, else vmcp.resources). Without this
-  # block the operator applies its own defaults, 100m/128Mi .. 500m/512Mi. Memory is per
-  # session: every client session aggregates the four members, and the eval runs OOM-killed
-  # the release vMCP at 512Mi 17 times (2026-10-16 .. 11-01; runbook "CRAB MCP bundle
-  # stability"). Same mechanism as the backend container in mcpserver.yaml: a strategic
-  # merge by container name. The container is `vmcp` (kubectl get deploy vmcp-<name>).
-  # Changing this rolls the vMCP pod and drops every open session: between runs only.
+  # SCALE-OUT (2026-11-02). Replicas > 1 only with Redis-backed sessions: a session made on one pod is
+  # found by the other, and a restarting pod no longer drops every session (the reconnect storm that
+  # OOM-killed the release vMCP on 2026-11-01). sessionAffinity None: all traffic reaches the vMCP from
+  # the gateway's Envoy, so ClientIP affinity would pin everything to one pod. Unset replicas = 1 pod.
+  replicas: {{ $reps }}
+{{- end }}
+{{- if gt $reps 1 }}
+  sessionAffinity: None
+  sessionStorage:
+    provider: redis
+    address: {{ printf "%s.%s.svc.cluster.local:6379" (include "archi.name" (dict "base" "redis-vmcp-sessions" "ctx" $)) $.Values.namespace | quote }}
+    keyPrefix: {{ printf "vmcp:%s:" $n | quote }}
+    passwordRef: {name: {{ $sess.authSecret }}, key: password}
+{{- end }}
+{{- if or $res $pool.key (gt $reps 1) }}
+
+  # The vMCP pod: our label (the disruption budget and the spread select on it), placement on the
+  # MCP pool, one replica per node, and the `vmcp` container's resources (vmcps[].resources, else
+  # vmcp.resources; operator defaults were 100m/128Mi .. 500m/512Mi, OOM-killed 17 times under eval
+  # load, 2026-10-16 .. 11-01). A change here rolls the vMCP pods: between runs only.
   podTemplateSpec:
+    metadata:
+      labels:
+        archi-crab.cern.ch/vmcp-pod: {{ $n }}
     spec:
+{{- with include "archi.mcpPlacement" (dict "ctx" $ "indent" 6) }}
+{{ . }}
+{{- end }}
+{{- if gt $reps 1 }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels: {archi-crab.cern.ch/vmcp-pod: {{ $n }}}
+{{- end }}
+{{- if $res }}
       containers:
         - name: vmcp
           resources:
 {{ toYaml $res | indent 12 }}
+{{- end }}
 {{- end }}
 
   incomingAuth:
@@ -144,5 +179,22 @@ spec:
         type: discovered
 {{- end }}
 {{- end }}
+{{- end }}
+{{- if gt $reps 1 }}
+---
+# A voluntary eviction or a node drain never takes both replicas (rollouts are not governed by
+# this: the operator's Deployment surges one pod before it removes one).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $n }}
+  namespace: {{ $.Values.namespace }}
+  annotations: {argocd.argoproj.io/sync-wave: "3"}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels: {archi-crab.cern.ch/vmcp-pod: {{ $n }}}
 {{- end }}
 {{- end }}

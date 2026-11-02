@@ -84,3 +84,27 @@ policy {{ . }}
 {{- define "archi.bundleFingerprint" -}}
 {{- include "archi.bundleFingerprintInput" . | sha256sum | trunc 16 -}}
 {{- end -}}
+
+{{/*
+MCP POOL (2026-11-02): the nodes that carry the MCP stack, by a node label `mcpPool.key=mcpPool.value`
+set by hand (runbook "CRAB MCP bundle stability", scale-out): node-2 and node-4 in staging, shared
+nodes, no taint. Pods PREFER the pool (weight 100) and tolerate a NoSchedule taint of the same key
+and value, so a node can later be made dedicated by tainting it, with no chart change. If the pool is
+full or gone they still schedule elsewhere. Renders nothing when mcpPool.key is unset (prod).
+Usage: {{ include "archi.mcpPlacement" (dict "ctx" $ "indent" 6) }}  (at the pod spec's level)
+*/}}
+{{- define "archi.mcpPlacement" -}}
+{{- $pool := .ctx.Values.mcpPool | default dict -}}
+{{- if $pool.key -}}
+{{- $out := printf `tolerations:
+  - {key: %q, operator: Equal, value: %q, effect: NoSchedule}
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - {key: %q, operator: In, values: [%q]}` $pool.key $pool.value $pool.key $pool.value -}}
+{{ $out | indent .indent }}
+{{- end -}}
+{{- end -}}

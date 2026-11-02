@@ -1,0 +1,138 @@
+{{- /*
+SCHEDULED RESTARTS (2026-11-02). A backend whose memory grows until its limit kills it (site-status-mcp:
+OOM-killed 22 times at 512Mi, ~9 h under eval load, nothing logged before each death) is restarted by us
+once a day, in a quiet hour, until its team fixes the leak. Per server: servers[].dailyRestart.schedule.
+
+Every attempt (hourly inside the schedule's window) RESTARTS ONLY IF
+  - no MCP session is open: no `vmcp:*` key in the vMCP session Redis (a key lives 30 min after the
+    session's last use, so: nobody used the replicated vMCPs, the eval bundle included, for 30 min), and
+  - the pod has run for at least scheduledRestarts.minAgeHours (default 20): at most once a day, and never
+    right after an OOM kill already restarted it.
+Anything unexpected (Redis unreachable, the pod unreadable) counts as busy: the attempt is skipped.
+The job may only get and delete that one pod (Role with resourceNames); ToolHive's StatefulSet recreates it.
+Read the outcome: kubectl -n <ns> logs job/<the latest restart-...> -c restart
+*/}}
+{{- $sess := .Values.vmcpSessions | default dict }}
+{{- $sr := .Values.scheduledRestarts | default dict }}
+{{- range $srv := .Values.servers }}
+{{- if $srv.dailyRestart }}
+{{- if not $sess.enabled }}
+{{- fail (printf "servers[%s].dailyRestart needs vmcpSessions.enabled: the session Redis is how an attempt knows nobody is using the MCPs" $srv.name) }}
+{{- end }}
+{{- $pod := printf "%s-0" (include "mcp.serverName" (dict "srv" $srv "ctx" $)) }}
+{{- $n := include "archi.name" (dict "base" (printf "restart-%s" $srv.name) "ctx" $) }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $n }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $n }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    resourceNames: [{{ $pod }}]
+    verbs: [get, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $n }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: {{ $n }}}
+subjects:
+  - {kind: ServiceAccount, name: {{ $n }}, namespace: {{ $.Values.namespace }}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $n }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+{{ include "archi.labels" $ | indent 4 }}
+spec:
+  schedule: {{ $srv.dailyRestart.schedule | quote }}
+  timeZone: {{ $sr.timeZone | default "Europe/Zurich" | quote }}
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 1800
+  successfulJobsHistoryLimit: 6
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 172800
+      template:
+        metadata:
+          labels:
+            app: {{ $n }}
+{{ include "archi.labels" $ | indent 12 }}
+        spec:
+          serviceAccountName: {{ $n }}
+          restartPolicy: Never
+          securityContext:
+{{ include "archi.podSecurityContext" $ | indent 12 }}
+          initContainers:
+            # 1. is any MCP session open? (the session Redis; anything but an empty answer = busy)
+            - name: check
+              image: {{ $sess.image | default $.Values.redis.image }}
+              securityContext:
+{{ include "archi.containerSecurityContext" $ | indent 16 }}
+              env:
+                - {name: REDIS_HOST, value: {{ include "archi.name" (dict "base" "redis-vmcp-sessions" "ctx" $) }}}
+                - name: REDIS_PASSWORD
+                  valueFrom: {secretKeyRef: {name: {{ $sess.authSecret }}, key: password}}
+              command: ["sh", "-c"]
+              args:
+                - |
+                  # step 1 (redis image): is any MCP session open? anything but an empty answer counts as busy
+                  out=$(redis-cli -h "$REDIS_HOST" -a "$REDIS_PASSWORD" --no-auth-warning --scan --pattern 'vmcp:*' 2>&1) || out="redis-cli failed: $out"
+                  if [ -z "$out" ]; then echo idle > /work/state; else echo "busy: $(printf '%s\n' "$out" | wc -l) session key(s) or error: $(printf '%s' "$out" | head -1 | cut -c1-80)" > /work/state; fi
+                  cat /work/state
+              volumeMounts: [{name: work, mountPath: /work}]
+          containers:
+            # 2. restart the pod if idle and old enough (the API, with this job's own token)
+            - name: restart
+              image: {{ $sr.image | default "curlimages/curl:8.11.1" }}
+              securityContext:
+{{ include "archi.containerSecurityContext" $ | indent 16 }}
+              env:
+                - {name: NAMESPACE, value: {{ $.Values.namespace }}}
+                - {name: POD, value: {{ $pod }}}
+                - {name: MIN_AGE_HOURS, value: {{ $sr.minAgeHours | default 20 | quote }}}
+              command: ["sh", "-c"]
+              args:
+                - |
+                  # step 2 (curl image): restart the pod once a day, in a quiet hour, never while MCP sessions are open
+                  now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+                  SA=${SA:-/var/run/secrets/kubernetes.io/serviceaccount}
+                  URL="${API:-https://kubernetes.default.svc}/api/v1/namespaces/$NAMESPACE/pods/$POD"
+                  k() { curl -sS --cacert "$SA/ca.crt" -H "Authorization: Bearer $(cat "$SA/token")" "$@"; }
+                  state=$(cat /work/state 2>/dev/null || echo "busy: no state")
+                  if [ "$state" != idle ]; then echo "$(now) skip $POD: $state"; exit 0; fi
+                  pod=$(k --fail "$URL") || { echo "$(now) skip $POD: cannot read it"; exit 0; }
+                  started=$(printf '%s' "$pod" | grep -o '"running":{"startedAt":"[^"]*"' | head -1 | sed 's/.*"startedAt":"//; s/"$//')
+                  [ -n "$started" ] || { echo "$(now) skip $POD: not running"; exit 0; }
+                  cutoff=$(date -u -d "@$(( $(date +%s) - MIN_AGE_HOURS * 3600 ))" +%Y-%m-%dT%H:%M:%SZ)
+                  if awk -v a="$started" -v b="$cutoff" 'BEGIN { exit !(a > b) }'; then
+                    echo "$(now) skip $POD: started $started, younger than ${MIN_AGE_HOURS} h"; exit 0
+                  fi
+                  code=$(k -o /dev/null -w '%{http_code}' -X DELETE "$URL")
+                  echo "$(now) restarted $POD (running since $started): HTTP $code"
+                  [ "$code" = 200 ] || [ "$code" = 202 ]
+              volumeMounts: [{name: work, mountPath: /work}]
+          volumes:
+            - {name: work, emptyDir: {sizeLimit: 1Mi}}
+{{- end }}
+{{- end }}

@@ -99,6 +99,13 @@ vmcp:
     - crab
     - site-status
     # - htcondor       # deferred: htcondor-idtokens not yet available
+  # resources: UNSET in prod on purpose (2026-11-02): the operator's defaults apply
+  # (100m/128Mi .. 500m/512Mi). Staging sets 2Gi after 17 OOM kills under eval load
+  # (values-staging.yaml vmcp.resources). Setting it here rolls every prod vMCP pod and
+  # drops its open sessions: do it in a planned window, with the value staging settled on.
+  # resources:
+  #   requests: {cpu: 200m, memory: 256Mi}
+  #   limits:   {cpu: "1",  memory: 2Gi}
 
 cern:
   issuer:  "https://auth.cern.ch/auth/realms/cern"

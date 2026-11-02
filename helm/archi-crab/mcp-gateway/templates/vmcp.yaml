@@ -79,6 +79,23 @@ metadata:
 spec:
   groupRef:
     name: {{ include "archi.name" (dict "base" $group "ctx" $) }}
+{{- $res := $v.resources | default $.Values.vmcp.resources }}
+{{- if $res }}
+
+  # The vMCP container's resources (vmcps[].resources, else vmcp.resources). Without this
+  # block the operator applies its own defaults, 100m/128Mi .. 500m/512Mi. Memory is per
+  # session: every client session aggregates the four members, and the eval runs OOM-killed
+  # the release vMCP at 512Mi 17 times (2026-10-16 .. 11-01; runbook "CRAB MCP bundle
+  # stability"). Same mechanism as the backend container in mcpserver.yaml: a strategic
+  # merge by container name. The container is `vmcp` (kubectl get deploy vmcp-<name>).
+  # Changing this rolls the vMCP pod and drops every open session: between runs only.
+  podTemplateSpec:
+    spec:
+      containers:
+        - name: vmcp
+          resources:
+{{ toYaml $res | indent 12 }}
+{{- end }}
 
   incomingAuth:
     type: oidc

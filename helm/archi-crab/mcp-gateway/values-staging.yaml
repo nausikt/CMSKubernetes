@@ -109,6 +109,15 @@ vmcp:
     - crab
     - site-status
     # - htcondor       # deferred: htcondor-idtokens not yet available
+  # Every vMCP's container (a vmcps[].resources overrides it). Operator defaults were
+  # 100m/128Mi .. 500m/512Mi: the release vMCP was OOM-killed 17 times at 512Mi under eval
+  # load (one instance lasted 17 min: 225 sessions opened in that time, 2026-11-01). The
+  # vMCP keeps at most 1,000 sessions per pod (its LRU cap); 2Gi is sized for that cap at
+  # about 2 MB a session (the D5 soak of the runbook measures the real cost: adjust here).
+  # CPU was never the limit (0.8 % throttled). Changing this rolls the pod: between runs.
+  resources:
+    requests: {cpu: 200m, memory: 256Mi}
+    limits:   {cpu: "1",  memory: 2Gi}
 
 cern:
   issuer:  "https://auth.cern.ch/auth/realms/cern"
@@ -152,7 +161,11 @@ servers:
       - {name: SITE_STATUS_MCP_OPENSEARCH__TOKEN, secretName: monit-grafana, key: token}
     resources:
       proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
-      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+      # backend 512Mi -> 1Gi (2026-11-02): OOM-killed 22 times at 512Mi, ~9 h of eval load per
+      # death, nothing in its log before each (site-status-mcp grows silently: reported to its
+      # team with the numbers). 1Gi doubles the time between deaths; it is not a fix. Resources
+      # are outside the bundle fingerprint, so the frozen v0.1.0 release renders unchanged.
+      backend: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 500m, memory: 1Gi}}
 
   - name: crab
     image: registry.cern.ch/cmscrab/crab-mcp@sha256:5e7c0e0de1d0847cc4bae2b3112b53214baeffe470ff095c708cd1fda0ad94fb  # was :preprod-1789131706
@@ -213,7 +226,9 @@ servers:
       - {name: igtf-bundle,     mountPath: /etc/grid-certs, defaultMode: 0444}
     resources:
       proxy:   {requests: {cpu: 50m,  memory: 64Mi},  limits: {cpu: 200m, memory: 256Mi}}
-      backend: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+      # backend 512Mi -> 1Gi (2026-11-02): 354 MB after 16 days with 0 restarts; headroom for
+      # the eval campaign, nothing more. Outside the bundle fingerprint.
+      backend: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 500m, memory: 1Gi}}
 
   # DEFERRED: htcondor-idtokens secret not yet available (/data/certs/tokens.d).
   # Re-enable with the secret. Needs egress 9620 to CERN *and* FNAL when

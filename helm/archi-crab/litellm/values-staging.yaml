@@ -53,6 +53,10 @@ models:
     litellm_params: {model: openai/glm-5.3-flash-int4, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
   - model_name: gpt-oss-20b
     litellm_params: {model: openai/gpt-oss-20b, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
+  # Gemma 4 12B (instruction-tuned, W4A16 quantized; the P1 "gemma" arm, 2026-11-03). No reasoning mode: like qwen,
+  # reasoning_effort is dropped (drop_params). Already on relay-lists-build.sh's CERN-hosted allow-list.
+  - model_name: gemma-4-12b-it-qat-w4a16-ct
+    litellm_params: {model: openai/gemma-4-12b-it-qat-w4a16-ct, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY, timeout: 900}
   - model_name: e5-large-v2
     litellm_params: {model: openai/e5-large-v2, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_SANDBOX_KEY}
     model_info: {mode: embedding}

@@ -28,6 +28,15 @@ models:
       api_key: os.environ/OPENAI_API_KEY
       timeout: 900
       allowed_openai_params: [reasoning_effort]
+  # GPT-6 Astra (OpenAI's frontier model; developers.openai.com/docs/models/gpt-6-astra, read 2026-11-03): $10 / $1 /
+  # $50 per 1M tokens in / cached / out = 5x Sol, 100x luna; past 272K input tokens 2x input and 1.5x output; 1.05M
+  # context, 128K output; efforts low..max. The id the rig's sub_route prices. Same EVAL key, every relay lane.
+  - model_name: gpt-6-astra
+    litellm_params:
+      model: openai/gpt-6-astra
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 900
+      allowed_openai_params: [reasoning_effort]
   # Ollama on a MIT submit node (values.yaml). NOT for the relay's list building: that must be a
   # model inside the organisation (the CERN AI gateway), see relay/RUNBOOK.md step 5.
   - model_name: qwen38-27b

@@ -3,9 +3,12 @@
 # already holds (OPENAI_API_KEY, OPENWEBUI_VIRTUAL_KEY: left as they are). Run where kubectl reaches the cluster (lxplus).
 #
 #   aigw-keys.sh [staging|prod|all]          default all
+#   aigw-keys.sh add <staging|prod> <NAME> <a model the key must list>
+#                                            one more key, e.g. add staging AIGW_COMPOPS_KEY MiMo
 #
 #   staging  archi-crab-staging   AIGW_SANDBOX_KEY  key archi-crab-sandbox (CERN-hosted models)
 #                                 AIGW_DEV_KEY      key archi-crab-dev     (FLATIRON models)
+#                                 AIGW_COMPOPS_KEY  key compops-pioneer    (MiMo Flash; added with: add)
 #   prod     archi-crab           AIGW_SANDBOX_KEY  key archi-crab-sandbox
 #
 # Each key is read without echo and checked first against AIGW's /models: the models it may call are printed (names
@@ -45,7 +48,18 @@ put() {  # namespace, then NAME=VALUE pairs: merged into the Secret's data, the 
 }
 
 want=${1:-all}
-case "$want" in staging|prod|all) ;; *) sed -n '2,16p' "$0" >&2; exit 2 ;; esac
+if [ "$want" = add ]; then
+  [ $# -eq 4 ] || { sed -n '2,18p' "$0" >&2; exit 2; }
+  case "$2" in staging) ns=archi-crab-staging ;; prod) ns=archi-crab ;; *) sed -n '2,18p' "$0" >&2; exit 2 ;; esac
+  [[ "$3" =~ ^[A-Z][A-Z0-9_]*$ ]] || { echo "aigw-keys: NAME must look like AIGW_SOMETHING_KEY" >&2; exit 2; }
+  echo "$2 ($ns):" >&2
+  K=$(ask "  $3" "$4")
+  put "$ns" "$3=$K"
+  unset K
+  echo "done. LiteLLM reads it at its next start (a merged values change rolls it; else rollout restart, between runs)" >&2
+  exit 0
+fi
+case "$want" in staging|prod|all) ;; *) sed -n '2,18p' "$0" >&2; exit 2 ;; esac
 S=""
 if [ "$want" != prod ]; then
   echo "staging (archi-crab-staging):" >&2

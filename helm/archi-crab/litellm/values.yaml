@@ -14,8 +14,8 @@ replicas: 1
 terminationGracePeriodSeconds: 900
 # Made by hand (kubectl; the Vault apps are disabled), every LiteLLM key in this one Secret: OPENAI_API_KEY,
 # OPENWEBUI_VIRTUAL_KEY (also LiteLLM's master key), AIGW_SANDBOX_KEY (key archi-crab-sandbox: the CERN-hosted AIGW
-# models) and, in staging, AIGW_DEV_KEY (key archi-crab-dev: FLATIRON). The AIGW keys: scripts/aigw-keys.sh (adds
-# them, leaves the others). A changed key reaches LiteLLM at its next restart (kubectl rollout restart, between runs).
+# models) and, in staging, AIGW_DEV_KEY (key archi-crab-dev: FLATIRON) and AIGW_COMPOPS_KEY (key compops-pioneer:
+# MiMo Flash). The AIGW keys: scripts/aigw-keys.sh (adds them, leaves the others). A changed key reaches LiteLLM at its next restart (kubectl rollout restart, between runs).
 # When Vault comes back (helm/archi-crab/vault), its <env>/litellm-keys must hold all of them: VSO rewrites the Secret.
 secretName: litellm-keys
 

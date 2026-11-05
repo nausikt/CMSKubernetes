@@ -72,3 +72,9 @@ models:
     litellm_params: {model: openai/Kimi-K3-FLATIRON, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_DEV_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
   - model_name: MiMo-V2.6-Pro-MOPD-FLATIRON
     litellm_params: {model: openai/MiMo-V2.6-Pro-MOPD-FLATIRON, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_DEV_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}
+  # --- CERN AI gateway, key compops-pioneer (team CMS-PIONEER; 2026-11-05): MiMo Flash ---
+  # AIGW_COMPOPS_KEY from Secret litellm-keys (scripts/aigw-keys.sh add staging AIGW_COMPOPS_KEY MiMo). Where it is
+  # hosted goes by AIGW's name, as above: a -FLATIRON (or -vertex) suffix = NOT at CERN = relay-masked text only and a
+  # data-owner decision per eval (OpenWebUI staging lists it unmasked); never for the relay's list building.
+  - model_name: MIMO-V2.6-FLASH-MOPD-VERTEX
+    litellm_params: {model: openai/MIMO-V2.6-FLASH-MOPD-VERTEX, api_base: "https://aigw.cern.ch/v1", api_key: os.environ/AIGW_COMPOPS_KEY, timeout: 900, allowed_openai_params: [reasoning_effort]}

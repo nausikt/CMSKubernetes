@@ -37,6 +37,15 @@ spec:
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+{{- if gt (int .Values.replicas) 1 }}
+      # More than one pod: on different nodes when there is room, so one node or one out-of-memory kill takes only
+      # the calls in flight on that pod. LiteLLM holds no state here (no database, the master key only).
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: {matchLabels: {app: {{ $n }}}}
+{{- end }}
       securityContext:
 {{ include "archi.podSecurityContext" . | indent 8 }}
       containers:
@@ -65,8 +74,7 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
-            requests: {cpu: 100m, memory: 256Mi}
-            limits:   {cpu: 1, memory: 1Gi}
+{{ toYaml .Values.resources | indent 12 }}
           volumeMounts:
             - {name: conf, mountPath: /conf}
             # readOnlyRootFilesystem: true needs writable scratch

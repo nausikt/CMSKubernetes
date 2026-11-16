@@ -10,6 +10,9 @@ image: ghcr.io/berriai/litellm:main-stable
 # (the sha256:... part). Empty: the moving tag.
 imageDigest: "sha256:c8756e7b9a61fe45df2ccb5b781d388c3b2f3a21ef9e4956630caef20f9f03aa"
 replicas: 1
+resources:
+  requests: {cpu: 100m, memory: 256Mi}
+  limits: {cpu: 1, memory: 1Gi}
 # The old pod finishes its in-flight calls before it exits (the relay's timeout is 900 s).
 terminationGracePeriodSeconds: 900
 # Made by hand (kubectl; the Vault apps are disabled), every LiteLLM key in this one Secret: OPENAI_API_KEY,

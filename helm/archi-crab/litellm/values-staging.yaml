@@ -2,6 +2,15 @@ env: staging
 nameSuffix: "-staging"
 namespace: archi-crab-staging
 imageDigest: "sha256:37e2dafb088a7723beb998590682957386dfc83ffea1848486f8e0e5cfac0b06"        # staging's own (values.yaml has the command); not prod's
+# Every masked call of the evaluation (11 relay lanes: answers and judge) passes this gateway. Two pods since the
+# 2026-11 campaign (about 50 tries in flight, two days): with one, a restart or an out-of-memory kill is 20 to 60 s
+# without a gateway for every lane, longer than the rig retries a call (5, 10, 15 s), and each try in flight then
+# stays in the results as failed. With two the Service sends the retry to the other pod. No state is shared: no
+# database, the master key only. Requests stay small (the scheduler places by them); the limits give room.
+replicas: 2
+resources:
+  requests: {cpu: 250m, memory: 512Mi}
+  limits: {cpu: 2, memory: 2Gi}
 
 # Staging's litellm-keys carries the EVAL OpenAI key (production's stays in archi-crab); the
 # pseudonymizing relay (archi-crab-okg relay/, 47-relay-app.yaml) sends every evaluation call here.

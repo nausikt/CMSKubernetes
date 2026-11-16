@@ -28,6 +28,15 @@ models:
       api_key: os.environ/OPENAI_API_KEY
       timeout: 900
       allowed_openai_params: [reasoning_effort]
+  # GPT-6 Sol (OpenAI): the paper rerun's `sol` (archi-crab-okg crab/eval/CHANGES.md P10, P13). The rig prices this id
+  # ($2 / $0.20 / $10 per 1M tokens in / cached / out = 20x luna) and not gpt-6.1-sol above, so the rerun's launcher
+  # asks for `gpt-6-sol`. Same EVAL key (it lists the model: 2026-11-01), every relay lane; masked text only.
+  - model_name: gpt-6-sol
+    litellm_params:
+      model: openai/gpt-6-sol
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 900
+      allowed_openai_params: [reasoning_effort]
   # GPT-6 Astra (OpenAI's frontier model; developers.openai.com/docs/models/gpt-6-astra, read 2026-11-03): $10 / $1 /
   # $50 per 1M tokens in / cached / out = 5x Sol, 100x luna; past 272K input tokens 2x input and 1.5x output; 1.05M
   # context, 128K output; efforts low..max. The id the rig's sub_route prices. Same EVAL key, every relay lane.
